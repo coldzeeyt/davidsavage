@@ -1,0 +1,19 @@
+{
+  "name": "davidsavage-xyz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The homepage of David Savage",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "ADMIN_PASSWORD=dev node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}
