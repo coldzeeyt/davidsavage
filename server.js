@@ -85,8 +85,18 @@ async function notify(title, message, click) {
 const originOf = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 
 // ---------- data ----------
-const getLive = () => store.get('site:live', DEFAULTS);
-const getDraft = async () => (await store.get('site:draft')) || getLive();
+// Fill in any section that's missing (e.g. saved by an older editor) so new sections always show up.
+function normalize(site) {
+  if (!site || !site.sections) return structuredClone(DEFAULTS);
+  for (const [k, v] of Object.entries(DEFAULTS.sections)) {
+    if (!site.sections[k]) site.sections[k] = structuredClone(v);
+    if (!site.order.includes(k)) { const at = DEFAULTS.order.indexOf(k); const prev = DEFAULTS.order[at - 1]; const i = site.order.indexOf(prev); site.order.splice(i >= 0 ? i + 1 : site.order.length, 0, k); }
+  }
+  for (const k of ['hero', 'nowSpinning', 'rightNow', 'ticker', 'meta']) if (!site[k]) site[k] = structuredClone(DEFAULTS[k]);
+  return site;
+}
+const getLive = async () => normalize(await store.get('site:live', DEFAULTS));
+const getDraft = async () => normalize((await store.get('site:draft')) || (await getLive()));
 const publicComment = (c) => ({ id: c.id, name: c.name, text: c.text, react: c.react, at: c.at, hearts: c.hearts || 0, reply: c.reply || '' });
 const publicQuestion = (q) => ({ id: q.id, name: q.name, text: q.text, at: q.at, answer: q.answer, answeredAt: q.answeredAt, pinned: !!q.pinned });
 
