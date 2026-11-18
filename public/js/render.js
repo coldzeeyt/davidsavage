@@ -128,7 +128,7 @@ function notes(site, data) {
     <div class="glass pin rv"><div style="display:flex;justify-content:space-between;align-items:center"><span class="label">Pinned</span><span class="pill g">${icon('pin', 12)}</span></div>
       <div class="q">${esc(s.pinned)}</div>
       <div class="sig"><div class="av">${esc((site.hero.name || 'D')[0])}</div><div><b>${esc(site.hero.name)}</b><small>${esc(s.handle)}</small></div></div></div>
-    <div class="posts">${posts.map((p) => { const d = new Date(p.date + 'T12:00:00'); const ok = !isNaN(d);
+    <div class="posts">${posts.length ? '' : `<div class="glass post rv" style="display:block;color:var(--dim);font-size:13px">Nothing posted yet.</div>`}${posts.map((p) => { const d = new Date(p.date + 'T12:00:00'); const ok = !isNaN(d);
       return `<div class="glass post rv"><div class="date"><b>${ok ? d.getDate() : ''}</b><span>${ok ? d.toLocaleString('en', { month: 'short' }).toUpperCase() : ''}</span></div><div>
         ${p.tag ? `<span class="pill${tagOn(p.tag)}">${esc(p.tag)}</span>` : ''}<p>${esc(p.text)}</p>
         ${p.attach && p.attach.title ? `<div class="att"><i class="cv-${esc(p.attach.cover || 'ember')}"></i><div>${esc(p.attach.title)}<small>${esc(p.attach.sub)}</small></div></div>` : ''}

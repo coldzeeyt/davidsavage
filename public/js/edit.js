@@ -123,7 +123,7 @@ function inspector() {
   const s = S.sel, d = S.draft;
   const wrap = (kind, title, body, extra = '') => `<div class="ih"><div><div class="label">${esc(kind)}</div><h3>${esc(title)}</h3></div>${extra}</div><div class="ibody" id="ibody">${body}</div>`;
   if (s === 'hero') return wrap('Top block', 'Hero', [
-    F.text('Small line on top', 'hero.eyebrow', 'Wadsworth, Ohio'), F.text('Gold intro', 'hero.kicker', 'the homepage of'),
+    F.text('Small line on top', 'hero.eyebrow', 'Music · Apps · Everything else'), F.text('Gold intro', 'hero.kicker', 'the homepage of'),
     F.text('Name', 'hero.name'), F.area('Bio', 'hero.bio', '', 'Wrap words in **double stars** to make them bold.', 5),
     `<div class="two">${F.text('Gold button', 'hero.primary.label')}${F.text('Goes to', 'hero.primary.link', '#builds')}</div>`,
     `<div class="two">${F.text('Second button', 'hero.secondary.label')}${F.text('Goes to', 'hero.secondary.link', 'https://')}</div>`

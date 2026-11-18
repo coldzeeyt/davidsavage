@@ -65,6 +65,25 @@ app.use('/api', sameOrigin);
 // Reaction dedupe (per ip, per item). Kept in memory; resets on restart — fine for hearts.
 const reacted = new Set();
 
+// ---------- phone alerts ----------
+// NTFY_URL = https://ntfy.sh/<your-secret-topic>  (subscribe to the same topic in the ntfy app)
+// DISCORD_WEBHOOK_URL = optional Discord webhook, if you'd rather get it there
+async function notify(title, message, click) {
+  const jobs = [];
+  if (process.env.NTFY_URL) {
+    jobs.push(fetch(process.env.NTFY_URL, {
+      method: 'POST', body: message,
+      headers: { Title: title.replace(/[^\x20-\x7E]/g, ''), Tags: 'speech_balloon', Priority: 'high', ...(click ? { Click: click } : {}) }
+    }));
+  }
+  if (process.env.DISCORD_WEBHOOK_URL) {
+    jobs.push(fetch(process.env.DISCORD_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: `**${title}**\n${message}${click ? `\n${click}` : ''}`.slice(0, 1900), allowed_mentions: { parse: [] } }) }));
+  }
+  const res = await Promise.allSettled(jobs);
+  res.forEach((r) => { if (r.status === 'rejected') console.warn('[notify] failed:', r.reason?.message); });
+}
+const originOf = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+
 // ---------- data ----------
 const getLive = () => store.get('site:live', DEFAULTS);
 const getDraft = async () => (await store.get('site:draft')) || getLive();
@@ -127,6 +146,7 @@ app.post('/api/questions', limit('ask', 5, 6e5), async (req, res) => {
   if (!name) { if (site.sections.gpt.allowAnonymous) name = 'anon'; else return res.status(400).json({ error: 'Add your name so David knows who asked.' }); }
   const q = { id: uid(), name, text, at: Date.now(), status: 'waiting', ip: ipHash(req) };
   await store.update('questions', [], (list) => { list.push(q); return list.slice(-2000); });
+  notify(`DavidGPT: ${name} asked`, text, originOf(req) + '/edit').catch(() => {});
   res.json({ ok: true, question: { id: q.id, name, text, at: q.at } });
 });
 
@@ -221,6 +241,25 @@ app.get(['/edit', '/edit/'], (req, res) => res.sendFile(path.join(__dirname, 'pu
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: '1h' }));
 app.use((req, res) => res.redirect('/'));
 
-store.init().then(() => {
+// One-time cleanups. Each runs once, then is remembered in the store.
+async function migrate() {
+  const done = await store.get('migrations', []);
+  if (!done.includes('clear-comments-2026-11-17')) {
+    await store.set('guestbook', []);
+    for (const key of ['site:live', 'site:draft']) {
+      const site = await store.get(key);
+      if (site?.sections?.notes) { site.sections.notes.posts = site.sections.notes.posts.filter((p) => !['n1', 'n2', 'n3'].includes(p.id)); await store.set(key, site); }
+    }
+    await store.set('flames', {});
+    for (const key of ['site:live', 'site:draft']) {
+      const site = await store.get(key);
+      if (site?.hero && /wadsworth|ohio/i.test(site.hero.eyebrow || '')) { site.hero.eyebrow = 'Music · Apps · Everything else'; await store.set(key, site); }
+    }
+    done.push('clear-comments-2026-11-17'); await store.set('migrations', done);
+    console.log('[migrate] cleared guestbook + starter posts');
+  }
+}
+
+store.init().then(migrate).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });
