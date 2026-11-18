@@ -80,7 +80,16 @@ async function notify(title, message, click) {
     jobs.push(fetch(process.env.DISCORD_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: `**${title}**\n${message}${click ? `\n${click}` : ''}`.slice(0, 1900), allowed_mentions: { parse: [] } }) }));
   }
   const res = await Promise.allSettled(jobs);
-  res.forEach((r) => { if (r.status === 'rejected') console.warn('[notify] failed:', r.reason?.message); });
+  const out = [];
+  for (const r of res) {
+    if (r.status === 'rejected') { console.warn('[notify] failed:', r.reason?.message); out.push({ ok: false, error: r.reason?.message }); continue; }
+    const body = await r.value.text().catch(() => '');
+    if (!r.value.ok) console.warn('[notify] got', r.value.status, body.slice(0, 200));
+    else console.log('[notify] sent', r.value.status);
+    out.push({ ok: r.value.ok, status: r.value.status, body: body.slice(0, 200) });
+  }
+  if (!jobs.length) console.warn('[notify] no NTFY_URL or DISCORD_WEBHOOK_URL set');
+  return out;
 }
 const originOf = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 
@@ -269,6 +278,11 @@ app.post('/api/admin/applications/:id', requireAdmin, async (req, res) => {
   res.status(found ? 200 : 404).json({ ok: found });
 });
 
+app.post('/api/admin/test-alert', requireAdmin, async (req, res) => {
+  const out = await notify('Test alert', 'If you see this, your site alerts are working.', originOf(req) + '/edit');
+  res.json({ results: out, configured: !!(process.env.NTFY_URL || process.env.DISCORD_WEBHOOK_URL) });
+});
+
 // ---------- pages ----------
 app.get('/healthz', (req, res) => res.send('ok'));
 const indexHtml = require('fs').readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
@@ -313,6 +327,28 @@ async function migrateLabel() {
   done.push('add-label-2026-11-17'); await store.set('migrations', done);
 }
 
-store.init().then(migrate).then(migrateLabel).then(() => {
+async function migrateCrossjam() {
+  const done = await store.get('migrations', []);
+  if (done.includes('remove-crossjam')) return;
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    if (!site?.sections?.projects) continue;
+    const items = site.sections.projects.items.filter((p) => !/crossjam/i.test(p.title || ''));
+    const byId = Object.fromEntries(items.map((p) => [p.id, p]));
+    if (byId.p2) byId.p2.width = 'xl';
+    if (byId.p5) byId.p5.width = 'l';
+    if (byId.p3) byId.p3.width = 'half';
+    if (byId.p4) byId.p4.width = 'half';
+    if (byId.p5 && byId.p2) { items.splice(items.indexOf(byId.p5), 1); items.splice(items.indexOf(byId.p2) + 1, 0, byId.p5); }
+    site.sections.projects.items = items;
+    await store.set(key, site);
+  }
+  done.push('remove-crossjam'); await store.set('migrations', done);
+  console.log('[migrate] removed Crossjam');
+  // one-time alert so you can see notifications are connected
+  notify('davidsavage.xyz', 'Alerts are connected. You\'ll get one of these for every DavidGPT question and label application.').catch(() => {});
+}
+
+store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });

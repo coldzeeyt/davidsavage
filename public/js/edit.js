@@ -312,6 +312,7 @@ function side() {
   }
   if (S.tab === 'settings') {
     return tabs + `<div class="scroll" style="display:flex;flex-direction:column;gap:14px">${F.text('Browser tab title', 'meta.title')}${F.area('Search / share description', 'meta.description')}
+      <button class="tb" data-act="testalert">${icon('bell', 14)} Send a test alert to my phone</button>
       <button class="tb" data-act="discard">${icon('undo-2', 14)} Throw away unpublished changes</button>
       <button class="tb" data-act="logout">${icon('log-out', 14)} Sign out</button></div>`;
   }
@@ -431,6 +432,16 @@ const ACT = {
     renderTop();
   },
   discard: async () => { if (!confirm('Throw away everything you haven\'t published?')) return; const r = await api('/api/admin/discard', { method: 'POST' }); S.draft = r.draft; S.snap = JSON.stringify(S.draft); S.hist = []; S.fut = []; S.unpublished = false; pushPreview(); renderAll(); toast('Back to the live version.'); },
+  testalert: async (el) => {
+    el.disabled = true;
+    try {
+      const r = await api('/api/admin/test-alert', { method: 'POST' });
+      if (!r.configured) toast('No alert service is set up on the server.');
+      else if (r.results.every((x) => x.ok)) toast('Sent. Check your phone.');
+      else { const x = r.results.find((y) => !y.ok); toast(`Alert service said: ${x.status || ''} ${(x.body || x.error || '').slice(0, 80)}`); }
+    } catch (e) { toast(e.message); }
+    el.disabled = false;
+  },
   logout: async () => { await api('/api/admin/logout', { method: 'POST' }); location.reload(); }
 };
 root.addEventListener('click', (e) => {
