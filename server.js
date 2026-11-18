@@ -349,6 +349,18 @@ async function migrateCrossjam() {
   notify('davidsavage.xyz', 'Alerts are connected. You\'ll get one of these for every DavidGPT question and label application.').catch(() => {});
 }
 
-store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(() => {
+async function migrateMatchbook() {
+  const done = await store.get('migrations', []);
+  if (done.includes('matchbook-5-songs')) return;
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    const items = site?.sections?.music?.items; if (!items) continue;
+    items.forEach((m) => { if (/matchbook/i.test(m.title || '')) m.sub = String(m.sub || '').replace(/\b6 songs\b/i, '5 songs'); });
+    await store.set(key, site);
+  }
+  done.push('matchbook-5-songs'); await store.set('migrations', done);
+}
+
+store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });
