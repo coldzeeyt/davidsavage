@@ -361,6 +361,19 @@ async function migrateMatchbook() {
   done.push('matchbook-5-songs'); await store.set('migrations', done);
 }
 
-store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(() => {
+async function migrateDontDie() {
+  const done = await store.get('migrations', []);
+  if (done.includes('add-dont-die-on-me')) return;
+  const rel = DEFAULTS.sections.music.items.find((m) => m.id === 'm4');
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    const items = site?.sections?.music?.items; if (!items || items.some((m) => m.id === 'm4')) continue;
+    items.unshift(structuredClone(rel));
+    await store.set(key, site);
+  }
+  done.push('add-dont-die-on-me'); await store.set('migrations', done);
+}
+
+store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });

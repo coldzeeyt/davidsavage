@@ -169,7 +169,7 @@ function gpt(site, data, mine) {
 
 function music(site) {
   const s = site.sections.music;
-  return `<section class="sec" id="music" data-block="section:music">${head(s)}<div class="music">${s.items.map((m) => {
+  return `<section class="sec" id="music" data-block="section:music">${head(s)}<div class="music" style="--n:${Math.min(Math.max(s.items.length, 1), 4)}">${s.items.map((m) => {
     const tag = m.link ? 'a' : 'div';
     return `<${tag} class="glass rel rv" ${m.link ? linkAttrs(m.link) : ''}>
       <div class="cover ${m.image ? '' : 'cv-' + esc(m.cover)}" style="${m.image ? bgImg(m.image) : ''}">${m.image ? '' : `<small>${esc(m.coverLabel)}</small><b>${esc(m.coverText)}</b>`}${m.badge ? `<span class="pill${/out|new/i.test(m.badge) ? ' g' : ''}">${esc(m.badge)}</span>` : ''}</div>
