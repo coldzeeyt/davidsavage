@@ -50,7 +50,7 @@ body{height:100vh;overflow:hidden}
 .row .ic2{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:rgba(255,255,255,.07);color:var(--soft);flex:none}
 .row.sel .ic2{color:var(--gold);background:rgba(200,168,75,.18)}
 .row .chev{color:#55546a;display:grid;margin-left:-4px}
-.badge{color:#ff8a8a!important}
+.badge{color:#ff8a8a!important;white-space:nowrap}
 .add{display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border-radius:12px;font-size:12px;color:var(--gold);border:1.5px dashed rgba(200,168,75,.45);background:rgba(200,168,75,.05);width:100%}
 .add:hover{background:rgba(200,168,75,.1)}
 .menu{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;border-radius:14px;background:rgba(10,10,20,.92);border:1px solid rgba(255,255,255,.12)}

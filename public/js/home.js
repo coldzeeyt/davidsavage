@@ -111,6 +111,19 @@ function wire() {
     });
   }
 
+  // label application
+  const ap = document.getElementById('applyform');
+  if (ap) ap.addEventListener('submit', async (e) => {
+    e.preventDefault(); if (PREVIEW) return;
+    const msg = document.getElementById('applymsg'); const btn = ap.querySelector('.btnp'); btn.disabled = true; msg.className = 'formmsg';
+    try {
+      const f = Object.fromEntries(new FormData(ap));
+      await api('/api/applications', { method: 'POST', body: f });
+      ap.reset(); msg.textContent = "Sent. If it's a fit, you'll hear back.";
+    } catch (err) { msg.textContent = err.message; msg.classList.add('err'); }
+    btn.disabled = false;
+  });
+
   if (PREVIEW) {
     document.querySelectorAll('a').forEach((a) => a.addEventListener('click', (e) => e.preventDefault()));
     document.querySelectorAll('[data-block]').forEach((el) => el.addEventListener('click', (e) => {

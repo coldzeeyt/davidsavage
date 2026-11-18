@@ -4,7 +4,7 @@ import { esc, ago, THUMBS } from './render.js';
 const root = document.getElementById('root');
 const S = {
   draft: null, unpublished: false, sel: 'hero', tab: 'blocks', device: 'desktop',
-  inbox: { comments: [], questions: [] }, pub: {}, hist: [], fut: [], snap: '',
+  inbox: { comments: [], questions: [], applications: [] }, appSel: null, pub: {}, hist: [], fut: [], snap: '',
   save: 'saved', open: {}, expanded: { projects: true }, addMenu: false, q: '',
   gptTab: 'waiting', qSel: null, ansDraft: {}, pinNext: false, replyOpen: null
 };
@@ -12,7 +12,7 @@ const DEVICES = { desktop: 1440, tablet: 834, phone: 390 };
 const COVERS = ['ember', 'ocean', 'prism', 'violet', 'mono', 'sunset'];
 const SECTION_META = {
   projects: ['layout-grid', 'Builds'], notes: ['pencil', "David's comments"], gpt: ['sparkles', 'DavidGPT'],
-  music: ['music', 'Music'], socials: ['link', 'Find me'], guestbook: ['message-circle', 'Guestbook']
+  music: ['music', 'Music'], label: ['disc-3', 'Same Room Records'], socials: ['link', 'Find me'], guestbook: ['message-circle', 'Guestbook']
 };
 const uid = () => Math.random().toString(36).slice(2, 9);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -115,6 +115,7 @@ const MAKE = {
   starter: () => ({ icon: 'sparkles', text: 'New question' }),
   release: () => ({ id: uid(), coverLabel: '', coverText: 'NEW\nRELEASE', cover: 'violet', image: '', badge: 'Coming soon', title: 'New release', sub: '', link: '', tracks: [] }),
   social: () => ({ id: uid(), icon: 'link', label: 'New link', sub: '', link: '' }),
+  artist: () => ({ id: uid(), name: 'New artist', genre: '', desc: '', link: '', cover: 'violet', image: '' }),
   project: () => ({ id: uid(), title: 'New project', desc: '', link: '', tags: [], width: 'm', thumb: 'text', thumbText: 'NEW', image: '', hidden: false })
 };
 
@@ -198,6 +199,7 @@ function inspector() {
     listEditor('sections.socials.items', { title: (x) => x.label, ic: (x) => x.icon, kind: 'social', addLabel: 'Add link', fields: (b) => F.icon('Icon', b + '.icon') + `<div class="two">${F.text('Name', b + '.label')}${F.text('Under it', b + '.sub')}</div>` + F.text('Link', b + '.link', 'https://') })
   ].join(''));
   if (s === 'section:guestbook') return guestbookInspector(wrap);
+  if (s === 'section:label') return labelInspector(wrap);
   S.sel = 'hero'; return inspector();
 }
 
@@ -244,6 +246,34 @@ function guestbookInspector(wrap) {
   ].join(''));
 }
 
+function labelInspector(wrap) {
+  const apps = S.inbox.applications || [];
+  const tone = { new: 'g', maybe: '', signed: '', pass: '' };
+  const appCard = (a) => {
+    const open = S.appSel === a.id;
+    return `<div class="item ${open ? 'open' : ''}"><div class="ihd" data-act="appsel" data-id="${esc(a.id)}"><span class="ic2">${icon('disc-3', 14)}</span><span class="t"><b style="font-weight:500">${esc(a.artist)}</b> <span class="hint">${esc(a.genre || '')}</span></span><span class="pill ${tone[a.status] || ''}">${esc(a.status)}</span></div>
+    ${open ? `<div class="ibd"><p class="hint">${ago(a.at)}</p>
+      <div class="f"><label>Email</label><a class="in" href="mailto:${esc(a.email)}" style="display:block">${esc(a.email)}</a></div>
+      <div class="f"><label>Music</label><a class="in" href="${esc(/^https?:/i.test(a.link) ? a.link : 'https://' + a.link)}" target="_blank" rel="noopener" style="display:block;word-break:break-all">${esc(a.link)}</a></div>
+      ${a.about ? `<div class="f"><label>About</label><div class="in" style="white-space:pre-line;line-height:1.6">${esc(a.about)}</div></div>` : ''}
+      <div class="acts">${['maybe', 'signed', 'pass'].map((st) => `<button data-act="app" data-id="${esc(a.id)}" data-a="${st}" class="${st === 'signed' ? 'ok' : ''}">${{ maybe: 'Maybe', signed: 'Sign', pass: 'Pass' }[st]}</button>`).join('')}<button class="del" data-act="app" data-id="${esc(a.id)}" data-a="delete">${icon('trash-2', 13)}</button></div>
+      ${a.status === 'signed' ? `<div class="hint">Marked as signed. Add them to the roster above when you're ready.</div>` : ''}
+    </div>` : ''}</div>`;
+  };
+  return wrap('Your label', S.draft.sections.label.title, [
+    F.toggle('Show this section', 'sections.label.hidden', true),
+    `<div class="two">${F.text('Title', 'sections.label.title')}${F.text('Gold part', 'sections.label.em')}</div>`,
+    F.area('About the label', 'sections.label.blurb', '', '', 2),
+    `<div><div class="flabel">Signed artists</div>${listEditor('sections.label.artists', { title: (x) => x.name, ic: () => 'disc-3', kind: 'artist', addLabel: 'Add artist', fields: (b) =>
+      `<div class="two">${F.text('Name', b + '.name')}${F.text('Genre', b + '.genre')}</div>` + F.text('One line about them', b + '.desc') + F.text('Link', b + '.link', 'https://') +
+      `<div class="two">${F.select('Cover color', b + '.cover', coverOpts)}${F.text('Or image URL', b + '.image')}</div>` })}</div>`,
+    F.toggle('Accept applications', 'sections.label.formOpen'),
+    `<div class="two">${F.text('Form title', 'sections.label.formTitle')}${F.text('Form text', 'sections.label.formSub')}</div>`,
+    F.text('Message when closed', 'sections.label.closedText'),
+    `<div class="flabel">Applications (${apps.length})</div>${apps.length ? `<div class="list">${apps.map(appCard).join('')}</div>` : '<div class="empty" style="padding:10px">No applications yet.</div>'}`
+  ].join(''));
+}
+
 // ---------- side ----------
 function tree() {
   const d = S.draft, q = S.q.toLowerCase();
@@ -260,7 +290,8 @@ function tree() {
   let html = row({ id: 'hero', name: 'Hero', ic: 'house' }) + row({ id: 'nowSpinning', name: 'Now spinning', ic: 'disc-3' }) + row({ id: 'rightNow', name: 'Right now', ic: 'clock' }) + row({ id: 'ticker', name: 'Ticker', ic: 'audio-lines', hidePath: 'ticker.hidden' });
   for (const k of d.order) {
     const [ic] = SECTION_META[k]; const sec = d.sections[k];
-    const badge = k === 'gpt' && waitingQ ? `<span class="badge">${waitingQ} new</span>` : k === 'guestbook' && pendingC ? `<span class="badge">${pendingC} new</span>` : k === 'projects' ? `<span>${sec.items.length}</span>` : '';
+    const newApps = (S.inbox.applications || []).filter((a) => a.status === 'new').length;
+    const badge = k === 'label' && newApps ? `<span class="badge">${newApps} new</span>` : k === 'gpt' && waitingQ ? `<span class="badge">${waitingQ} new</span>` : k === 'guestbook' && pendingC ? `<span class="badge">${pendingC} new</span>` : k === 'projects' ? `<span>${sec.items.length}</span>` : '';
     const chev = k === 'projects' ? `<button class="chev" data-act="expand" data-k="projects">${icon(S.expanded.projects ? 'chevron-down' : 'chevron-right', 13)}</button>` : '';
     html += row({ id: 'section:' + k, name: sec.title || SECTION_META[k][1], ic, drag: 'section:' + k, hidePath: `sections.${k}.hidden`, extra: badge, chev });
     if (k === 'projects' && (S.expanded.projects || q)) html += sec.items.map((p) => row({ id: 'project:' + p.id, name: p.title, sub: true, drag: 'project:' + p.id, hidePath: `sections.projects.items.${projIdx(p.id)}.hidden` })).join('');
@@ -270,11 +301,12 @@ function tree() {
 function side() {
   const pendingC = S.inbox.comments.filter((x) => x.status === 'pending');
   const waitingQ = S.inbox.questions.filter((x) => x.status !== 'answered');
-  const n = pendingC.length + waitingQ.length;
+  const newA = (S.inbox.applications || []).filter((a) => a.status === 'new');
+  const n = pendingC.length + waitingQ.length + newA.length;
   const tabs = `<div class="tabs">${[['blocks', 'layout-grid', 'Blocks'], ['inbox', 'inbox', 'Inbox'], ['settings', 'settings-2', 'Settings']].map(([k, ic, t]) => `<button data-act="tab" data-v="${k}" class="${S.tab === k ? 'on' : ''}" title="${t}">${icon(ic, 16)}${k === 'inbox' && n ? `<sup>${n}</sup>` : ''}</button>`).join('')}</div>`;
   if (S.tab === 'inbox') {
-    const items = [...pendingC.map((c) => ({ t: 'c', ...c })), ...waitingQ.map((q) => ({ t: 'q', ...q }))].sort((a, b) => b.at - a.at);
-    return tabs + `<div class="scroll"><div class="qs">${items.length ? items.map((x) => `<button class="q" data-act="${x.t === 'q' ? 'goq' : 'goc'}" data-id="${esc(x.id)}"><div class="qa">${icon(x.t === 'q' ? 'sparkles' : 'message-circle', 13)}</div><div><b>${esc(x.name)}</b> <span class="hint">${x.t === 'q' ? 'asked' : 'signed the guestbook'}</span><p>${esc(x.text)}</p></div><span class="when">${ago(x.at)}</span></button>`).join('') : '<div class="empty">Inbox zero. Nothing waiting on you.</div>'}</div></div>`;
+    const items = [...pendingC.map((c) => ({ t: 'c', ...c })), ...waitingQ.map((q) => ({ t: 'q', ...q })), ...newA.map((a) => ({ t: 'a', ...a, name: a.artist, text: a.genre ? a.genre + ' · ' + a.link : a.link }))].sort((a, b) => b.at - a.at);
+    return tabs + `<div class="scroll"><div class="qs">${items.length ? items.map((x) => `<button class="q" data-act="${{ q: 'goq', c: 'goc', a: 'goa' }[x.t]}" data-id="${esc(x.id)}"><div class="qa">${icon({ q: 'sparkles', c: 'message-circle', a: 'disc-3' }[x.t], 13)}</div><div><b>${esc(x.name)}</b> <span class="hint">${{ q: 'asked', c: 'signed the guestbook', a: 'applied to the label' }[x.t]}</span><p>${esc(x.text)}</p></div><span class="when">${ago(x.at)}</span></button>`).join('') : '<div class="empty">Inbox zero. Nothing waiting on you.</div>'}</div></div>`;
   }
   if (S.tab === 'settings') {
     return tabs + `<div class="scroll" style="display:flex;flex-direction:column;gap:14px">${F.text('Browser tab title', 'meta.title')}${F.area('Search / share description', 'meta.description')}
@@ -284,7 +316,7 @@ function side() {
   const first = pendingC[0];
   return tabs + `<label class="search">${icon('search', 14)}<input id="treeq" placeholder="Find a block" value="${esc(S.q)}"></label>
     <div class="scroll"><div class="tree">${tree()}</div></div>
-    <div style="position:relative">${S.addMenu ? `<div class="menu" style="position:absolute;bottom:52px;left:0;right:0;z-index:5">${[['project', 'layout-grid', 'Project'], ['post', 'pen-line', 'Post'], ['release', 'disc-3', 'Release'], ['social', 'link', 'Link'], ['status', 'clock', 'Status'], ['tick', 'audio-lines', 'Ticker item']].map(([k, ic, l]) => `<button data-act="add" data-kind="${k}">${icon(ic, 14)} ${l}</button>`).join('')}</div>` : ''}
+    <div style="position:relative">${S.addMenu ? `<div class="menu" style="position:absolute;bottom:52px;left:0;right:0;z-index:5">${[['project', 'layout-grid', 'Project'], ['post', 'pen-line', 'Post'], ['release', 'disc-3', 'Release'], ['social', 'link', 'Link'], ['status', 'clock', 'Status'], ['tick', 'audio-lines', 'Ticker item'], ['artist', 'disc-3', 'Artist']].map(([k, ic, l]) => `<button data-act="add" data-kind="${k}">${icon(ic, 14)} ${l}</button>`).join('')}</div>` : ''}
     <button class="add" data-act="addmenu">${icon('plus', 15)} Add block</button></div>
     ${first ? `<div class="mod"><div class="hd"><span class="label">Waiting for you</span><span class="pill g">${pendingC.length} new</span></div><p><b>${esc(first.name)}</b> — ${esc(first.text.slice(0, 90))}${first.text.length > 90 ? '…' : ''}</p>
       <div class="acts"><button class="ok" data-act="cm" data-id="${esc(first.id)}" data-a="approve">Approve</button><button data-act="goc" data-id="${esc(first.id)}">Reply</button><button data-act="cm" data-id="${esc(first.id)}" data-a="hide">Hide</button></div></div>` : ''}`;
@@ -340,7 +372,7 @@ const ACT = {
   addmenu: () => { S.addMenu = !S.addMenu; renderAll(); },
   add: (el) => {
     const k = el.dataset.kind; S.addMenu = false; const d = S.draft;
-    const targets = { project: null, post: ['sections.notes.posts', 'section:notes'], release: ['sections.music.items', 'section:music'], social: ['sections.socials.items', 'section:socials'], status: ['rightNow.statuses', 'rightNow'], tick: ['ticker.items', 'ticker'] };
+    const targets = { project: null, post: ['sections.notes.posts', 'section:notes'], release: ['sections.music.items', 'section:music'], social: ['sections.socials.items', 'section:socials'], status: ['rightNow.statuses', 'rightNow'], tick: ['ticker.items', 'ticker'], artist: ['sections.label.artists', 'section:label'] };
     if (k === 'project') { const p = MAKE.project(); d.sections.projects.items.push(p); S.expanded.projects = true; S.sel = 'project:' + p.id; }
     else { const [path, sel] = targets[k]; const it = MAKE[k](); const arr = getP(path); if (k === 'post') arr.unshift(it); else arr.push(it); S.open[path + ':' + it.id] = true; S.sel = sel; }
     changed(); selectPreview(true);
@@ -367,6 +399,12 @@ const ACT = {
     try { await api(`/api/admin/comments/${id}`, { method: 'POST', body }); S.replyOpen = null; toast({ approve: 'Approved.', hide: 'Hidden.', delete: 'Deleted.', reply: 'Reply posted.' }[a]); await refreshInbox(); refreshPublic(); } catch (e) { toast(e.message); }
   },
   goq: (el) => { S.tab = 'blocks'; S.sel = 'section:gpt'; S.gptTab = 'waiting'; S.qSel = el.dataset.id; renderAll(); selectPreview(true); },
+  goa: (el) => { S.tab = 'blocks'; S.sel = 'section:label'; S.appSel = el.dataset.id; renderAll(); selectPreview(true); },
+  appsel: (el) => { S.appSel = S.appSel === el.dataset.id ? null : el.dataset.id; renderAll(); },
+  app: async (el) => {
+    const id = el.dataset.id, a = el.dataset.a; if (a === 'delete' && !confirm('Delete this application?')) return;
+    try { await api(`/api/admin/applications/${id}`, { method: 'POST', body: a === 'delete' ? { action: 'delete' } : { action: 'status', status: a } }); await refreshInbox(); } catch (e) { toast(e.message); }
+  },
   goc: (el) => { S.tab = 'blocks'; S.sel = 'section:guestbook'; S.replyOpen = el.dataset.id; renderAll(); selectPreview(true); },
   publish: async (el) => {
     el.disabled = true; el.textContent = 'Publishing…';

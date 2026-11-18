@@ -150,6 +150,22 @@ app.post('/api/questions', limit('ask', 5, 6e5), async (req, res) => {
   res.json({ ok: true, question: { id: q.id, name, text, at: q.at } });
 });
 
+app.post('/api/applications', limit('apply', 3, 9e5), async (req, res) => {
+  if (req.body.website) return res.json({ ok: true });
+  const site = await getLive();
+  if (!site.sections.label || !site.sections.label.formOpen) return res.status(403).json({ error: 'Applications are closed right now.' });
+  const a = {
+    id: uid(), at: Date.now(), status: 'new', ip: ipHash(req),
+    artist: clean(req.body.artist, 60), email: clean(req.body.email, 120), link: clean(req.body.link, 300),
+    genre: clean(req.body.genre, 60), about: clean(req.body.about, 1500)
+  };
+  if (!a.artist || !a.email || !a.link) return res.status(400).json({ error: 'Add your artist name, email, and a link to your music.' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email)) return res.status(400).json({ error: "That email doesn't look right." });
+  await store.update('applications', [], (list) => { list.push(a); return list.slice(-2000); });
+  notify(`Same Room Records: ${a.artist} applied`, `${a.genre ? a.genre + ' · ' : ''}${a.link}\n${a.about}`.slice(0, 900), originOf(req) + '/edit').catch(() => {});
+  res.json({ ok: true });
+});
+
 // Visitors can poll their own question to see when David answers
 app.get('/api/questions/:id', async (req, res) => {
   const list = await store.get('questions', []);
@@ -196,11 +212,12 @@ app.post('/api/admin/discard', requireAdmin, async (req, res) => {
 });
 
 app.get('/api/admin/inbox', requireAdmin, async (req, res) => {
-  const [comments, questions] = await Promise.all([store.get('guestbook', []), store.get('questions', [])]);
+  const [comments, questions, applications] = await Promise.all([store.get('guestbook', []), store.get('questions', []), store.get('applications', [])]);
   const strip = (x) => { const { ip, ...rest } = x; return rest; };
   res.json({
     comments: comments.slice().sort((a, b) => b.at - a.at).slice(0, 300).map(strip),
-    questions: questions.slice().sort((a, b) => b.at - a.at).slice(0, 300).map(strip)
+    questions: questions.slice().sort((a, b) => b.at - a.at).slice(0, 300).map(strip),
+    applications: applications.slice().sort((a, b) => b.at - a.at).slice(0, 300).map(strip)
   });
 });
 app.post('/api/admin/comments/:id', requireAdmin, async (req, res) => {
@@ -224,6 +241,18 @@ app.post('/api/admin/questions/:id', requireAdmin, async (req, res) => {
     if (action === 'answer') { q.answer = clean(req.body.answer, 1500); q.status = q.answer ? 'answered' : 'waiting'; q.answeredAt = Date.now(); if ('pinned' in req.body) q.pinned = !!req.body.pinned; }
     else if (action === 'pin') q.pinned = !!req.body.pinned;
     else if (action === 'hide') q.hiddenFromSite = !q.hiddenFromSite;
+    else if (action === 'delete') list.splice(i, 1);
+    return list;
+  });
+  res.status(found ? 200 : 404).json({ ok: found });
+});
+
+app.post('/api/admin/applications/:id', requireAdmin, async (req, res) => {
+  const { action } = req.body; let found = false;
+  await store.update('applications', [], (list) => {
+    const i = list.findIndex((a) => a.id === req.params.id);
+    if (i < 0) return list; found = true;
+    if (action === 'status' && ['new', 'maybe', 'signed', 'pass'].includes(req.body.status)) list[i].status = req.body.status;
     else if (action === 'delete') list.splice(i, 1);
     return list;
   });
@@ -260,6 +289,20 @@ async function migrate() {
   }
 }
 
-store.init().then(migrate).then(() => {
+async function migrateLabel() {
+  const done = await store.get('migrations', []);
+  if (done.includes('add-label-2026-11-17')) return;
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    if (!site || site.sections.label) continue;
+    site.sections.label = structuredClone(DEFAULTS.sections.label);
+    const i = site.order.indexOf('music');
+    site.order.splice(i >= 0 ? i + 1 : site.order.length, 0, 'label');
+    await store.set(key, site);
+  }
+  done.push('add-label-2026-11-17'); await store.set('migrations', done);
+}
+
+store.init().then(migrate).then(migrateLabel).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });

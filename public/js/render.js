@@ -42,7 +42,7 @@ function thumb(p) {
 
 // ---------- blocks ----------
 function nav(site) {
-  const map = { projects: ['builds', 'Builds'], notes: ['notes', 'Notes'], gpt: ['ask', 'DavidGPT'], music: ['music', 'Music'], guestbook: ['guestbook', 'Guestbook'] };
+  const map = { projects: ['builds', 'Builds'], notes: ['notes', 'Notes'], gpt: ['ask', 'DavidGPT'], music: ['music', 'Music'], label: ['label', 'Label'], guestbook: ['guestbook', 'Guestbook'] };
   const links = site.order.filter((k) => map[k] && !site.sections[k].hidden).map((k) => `<a href="#${map[k][0]}">${map[k][1]}</a>`).join('');
   const parts = String(site.hero.name || '').trim().split(/\s+/);
   const logo = parts.length > 1 ? `${esc(parts[0])}<span>.</span>${esc(parts.slice(1).join(' '))}` : esc(parts[0] || '');
@@ -178,6 +178,31 @@ function music(site) {
     </${tag}>`; }).join('')}</div></section>`;
 }
 
+function label(site) {
+  const s = site.sections.label; if (!s) return '';
+  const roster = s.artists.map((a) => {
+    const tag = a.link ? 'a' : 'div';
+    return `<${tag} class="glass artist rv" ${a.link ? linkAttrs(a.link) : ''}>
+      <div class="acov ${a.image ? '' : 'cv-' + esc(a.cover || 'mono')}" style="${a.image ? bgImg(a.image) : ''}">${a.image ? '' : `<b>${esc(a.name)}</b>`}</div>
+      <div class="ainfo"><span class="pill g">Signed</span><h4>${esc(a.name)}</h4><small>${esc(a.genre)}</small>${a.desc ? `<p>${esc(a.desc)}</p>` : ''}</div>
+      ${a.link ? `<span class="go">${icon('arrow-up-right', 17)}</span>` : ''}
+    </${tag}>`;
+  }).join('');
+  const form = s.formOpen ? `<form class="glass apply rv" id="applyform" autocomplete="off">
+      <div class="label">Applications open</div>
+      <h3>${esc(s.formTitle)}</h3><p>${esc(s.formSub)}</p>
+      <div class="arow"><input class="input" name="artist" maxlength="60" placeholder="Artist name" required><input class="input" name="email" type="email" maxlength="120" placeholder="Email" required></div>
+      <div class="arow"><input class="input" name="link" maxlength="300" placeholder="Link to your music" required><input class="input" name="genre" maxlength="60" placeholder="Genre"></div>
+      <textarea class="input" name="about" maxlength="1500" placeholder="Tell us about you and what you're working on…"></textarea>
+      <input class="hp" name="website" tabindex="-1" aria-hidden="true">
+      <div class="send"><span class="formmsg" id="applymsg"></span><button class="btnp">Send application ${icon('send', 14)}</button></div>
+    </form>`
+    : `<div class="glass apply rv"><div class="label">Applications</div><h3>${esc(s.formTitle)}</h3><p>${esc(s.closedText)}</p></div>`;
+  return `<section class="sec" id="label" data-block="section:label">${head(s)}
+    ${s.blurb ? `<p class="lblurb rv">${esc(s.blurb)}</p>` : ''}
+    <div class="labelgrid"><div class="roster"><div class="label" style="margin-bottom:2px">Current roster · ${s.artists.length}</div>${roster}</div>${form}</div></section>`;
+}
+
 function socials(site) {
   const s = site.sections.socials;
   return `<section class="sec" id="links" data-block="section:socials">${head(s)}<div class="socials">${s.items.map((l) =>
@@ -208,7 +233,7 @@ function guestbook(site, data) {
 
 export function renderSite(data, { mine = [] } = {}) {
   const site = data.site;
-  const blocks = { projects, notes: (s) => notes(s, data), gpt: (s) => gpt(s, data, mine), music, socials, guestbook: (s) => guestbook(s, data) };
+  const blocks = { projects, notes: (s) => notes(s, data), gpt: (s) => gpt(s, data, mine), music, label, socials, guestbook: (s) => guestbook(s, data) };
   const body = site.order.filter((k) => blocks[k] && !site.sections[k].hidden).map((k) => blocks[k](site)).join('\n');
   return `<div class="wrap">${nav(site)}${hero(site)}${ticker(site)}${body}</div>`;
 }
