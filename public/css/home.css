@@ -4,7 +4,7 @@
 nav.top{position:sticky;top:16px;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:12px 12px 12px 14px;border-radius:999px}
 .logo{display:flex;align-items:center;gap:12px;font-family:var(--display);font-size:30px;letter-spacing:2px;text-transform:uppercase}
 .logo img{width:38px;height:38px;border-radius:11px;box-shadow:0 6px 18px -6px rgba(0,0,0,.7)}
-.logo span{color:var(--gold)}
+.logo .lt span{color:var(--gold)}
 .links{display:flex;gap:4px;font-size:13px}
 .links a{padding:11px 18px;border-radius:999px;color:var(--dim);transition:color .2s,background .2s}
 .links a:hover{color:var(--ink)}

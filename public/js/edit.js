@@ -5,10 +5,12 @@ const root = document.getElementById('root');
 const S = {
   draft: null, unpublished: false, sel: 'hero', tab: 'blocks', device: 'desktop',
   inbox: { comments: [], questions: [], applications: [] }, appSel: null, pub: {}, hist: [], fut: [], snap: '',
-  save: 'saved', open: {}, expanded: { projects: true }, addMenu: false, q: '',
+  save: 'saved', mview: 'blocks', open: {}, expanded: { projects: true }, addMenu: false, q: '',
   gptTab: 'waiting', qSel: null, ansDraft: {}, pinNext: false, replyOpen: null
 };
 const DEVICES = { desktop: 1440, tablet: 834, phone: 390 };
+const isMobile = () => matchMedia('(max-width: 900px)').matches;
+function setView(v) { S.mview = v; const a = document.querySelector('.app'); if (a) a.dataset.mview = v; if (v === 'preview') requestAnimationFrame(layoutFrame); renderNav(); }
 const COVERS = ['ember', 'ocean', 'prism', 'violet', 'mono', 'sunset'];
 const SECTION_META = {
   projects: ['layout-grid', 'Builds'], notes: ['pencil', "David's comments"], gpt: ['sparkles', 'DavidGPT'],
@@ -70,11 +72,11 @@ function selectPreview(scroll) { if (ready) frame.contentWindow.postMessage({ ty
 addEventListener('message', (e) => {
   if (e.origin !== location.origin || !e.data) return;
   if (e.data.type === 'ready') { ready = true; pushPreview(); selectPreview(false); }
-  if (e.data.type === 'select') { S.sel = e.data.id; S.tab = 'blocks'; if (S.sel.startsWith('project:')) S.expanded.projects = true; renderAll(); selectPreview(false); }
+  if (e.data.type === 'select') { S.sel = e.data.id; S.tab = 'blocks'; if (S.sel.startsWith('project:')) S.expanded.projects = true; if (isMobile()) setView('edit'); renderAll(); selectPreview(false); }
 });
 function layoutFrame() {
   const box = document.getElementById('frame'); if (!box || !frame) return;
-  const w = box.clientWidth, h = box.clientHeight, dw = DEVICES[S.device];
+  const w = box.clientWidth, h = box.clientHeight, dw = isMobile() ? w : DEVICES[S.device];
   const sc = Math.min(1, w / dw);
   Object.assign(frame.style, { width: dw + 'px', height: h / sc + 'px', transform: `scale(${sc})`, left: (w - dw * sc) / 2 + 'px' });
   const z = document.getElementById('zoom'); if (z) z.textContent = Math.round(sc * 100) + '%';
@@ -285,7 +287,7 @@ function tree() {
     const hidden = hidePath ? !!getP(hidePath) : false;
     return `<div class="row ${sub ? 'sub' : ''} ${S.sel === id ? 'sel' : ''} ${hidden ? 'off' : ''}" data-act="select" data-id="${esc(id)}" ${drag ? `draggable="true" data-drag="${esc(drag)}"` : ''}>
       ${drag ? `<span class="h">${icon('grip-vertical', 14)}</span>` : '<span style="width:14px"></span>'}${chev}${sub ? '' : `<span class="ic2">${icon(ic, 13)}</span>`}<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
-      <span class="e">${extra}${hidePath ? `<button data-act="toggle" data-path="${hidePath}" title="${hidden ? 'Show' : 'Hide'}">${icon(hidden ? 'eye-off' : 'eye', 14)}</button>` : ''}</span></div>`;
+      <span class="e">${extra}${drag ? `<button class="mv" data-act="move" data-id="${esc(drag)}" data-d="-1" aria-label="Move up">${icon('chevron-down', 15, 'flip')}</button><button class="mv" data-act="move" data-id="${esc(drag)}" data-d="1" aria-label="Move down">${icon('chevron-down', 15)}</button>` : ''}${hidePath ? `<button data-act="toggle" data-path="${hidePath}" title="${hidden ? 'Show' : 'Hide'}">${icon(hidden ? 'eye-off' : 'eye', 14)}</button>` : ''}</span></div>`;
   };
   let html = row({ id: 'hero', name: 'Hero', ic: 'house' }) + row({ id: 'nowSpinning', name: 'Now spinning', ic: 'disc-3' }) + row({ id: 'rightNow', name: 'Right now', ic: 'clock' }) + row({ id: 'ticker', name: 'Ticker', ic: 'audio-lines', hidePath: 'ticker.hidden' });
   for (const k of d.order) {
@@ -328,11 +330,18 @@ function top() {
     <div class="mid"><div class="seg">${[['desktop', 'monitor', 'Desktop'], ['tablet', 'tablet', 'Tablet'], ['phone', 'smartphone', 'Phone']].map(([k, ic, l]) => `<button data-act="device" data-v="${k}" class="${S.device === k ? 'on' : ''}">${icon(ic, 14)}<span>${l}</span></button>`).join('')}</div></div>
     <div class="right"><div class="saved ${S.save === 'saved' ? '' : S.save}" id="savestate"><i></i><span>${S.save === 'busy' ? 'Saving…' : S.save === 'err' ? 'Not saved' : S.unpublished ? 'Draft saved' : 'Published'}</span></div>
       <button class="ib" data-act="undo" ${S.hist.length ? '' : 'disabled'} title="Undo">${icon('undo-2', 16)}</button><button class="ib" data-act="redo" ${S.fut.length ? '' : 'disabled'} title="Redo">${icon('redo-2', 16)}</button>
-      <a class="tb" href="/" target="_blank" rel="noopener">View site ${icon('arrow-up-right', 15)}</a>
+      <a class="tb vs" href="/" target="_blank" rel="noopener"><span>View site</span> ${icon('arrow-up-right', 15)}</a>
       <button class="pub" data-act="publish" ${S.unpublished ? '' : 'disabled'}>${S.unpublished ? 'Publish' : 'Live'}</button></div>`;
 }
 
 // ---------- render ----------
+function renderNav() {
+  const el = document.getElementById('mnav'); if (!el) return;
+  const n = S.inbox.comments.filter((x) => x.status === 'pending').length + S.inbox.questions.filter((x) => x.status !== 'answered').length + (S.inbox.applications || []).filter((a) => a.status === 'new').length;
+  const cur = S.mview === 'blocks' && S.tab === 'inbox' ? 'inbox' : S.mview;
+  el.innerHTML = [['blocks', 'layout-grid', 'Blocks'], ['edit', 'pencil', 'Edit'], ['preview', 'eye', 'Preview'], ['inbox', 'inbox', 'Inbox']].map(([k, ic, l]) =>
+    `<button data-act="mview" data-v="${k}" class="${cur === k ? 'on' : ''}">${icon(ic, 20)}<span>${l}</span>${k === 'inbox' && n ? `<sup>${n}</sup>` : ''}</button>`).join('');
+}
 function renderTop() { const el = document.getElementById('top'); if (el) el.innerHTML = top(); }
 function renderAll() {
   if (!document.getElementById('top')) return;
@@ -343,23 +352,33 @@ function renderAll() {
   const ib = document.getElementById('ibody')?.scrollTop;
   document.getElementById('insp').innerHTML = inspector();
   const ib2 = document.getElementById('ibody'); if (ib2 && ib) ib2.scrollTop = ib;
+  renderNav();
 }
 function shell() {
-  root.innerHTML = `<div class="app"><header class="glass top" id="top"></header><div class="main">
+  root.innerHTML = `<div class="app" data-mview="${S.mview}"><header class="glass top" id="top"></header><div class="main">
     <aside class="glass side" id="side"></aside>
     <section class="glass canvas"><div class="chrome"><div class="lights"><i></i><i></i><i></i></div><div class="url">${icon('shield-check', 13)} <b>${esc(location.host)}</b></div><div class="zoom" id="zoom"></div></div>
       <div class="frame" id="frame"><iframe id="pv" src="/?preview=1" title="Preview"></iframe></div></section>
-    <aside class="glass insp" id="insp"></aside></div></div>`;
+    <aside class="glass insp" id="insp"></aside></div><nav class="glass mnav" id="mnav"></nav></div>`;
   frame = document.getElementById('pv');
   new ResizeObserver(layoutFrame).observe(document.getElementById('frame'));
+  addEventListener('resize', () => requestAnimationFrame(layoutFrame));
   renderAll(); layoutFrame();
 }
 
 // ---------- events ----------
-function select(id) { S.sel = id; S.replyOpen = null; renderAll(); selectPreview(true); }
+function select(id) { S.sel = id; S.replyOpen = null; if (isMobile()) setView('edit'); renderAll(); selectPreview(true); }
 const ACT = {
   select: (el) => select(el.dataset.id),
   tab: (el) => { S.tab = el.dataset.v; S.addMenu = false; renderAll(); },
+  mview: (el) => { const v = el.dataset.v; if (v === 'inbox') { S.tab = 'inbox'; setView('blocks'); } else { if (v === 'blocks' && S.tab === 'inbox') S.tab = 'blocks'; setView(v); } renderAll(); },
+  move: (el, e) => {
+    e.stopPropagation(); const id = el.dataset.id, d = +el.dataset.d;
+    const [type, key] = [id.split(':')[0], id.slice(id.indexOf(':') + 1)];
+    const arr = type === 'section' ? S.draft.order : S.draft.sections.projects.items;
+    const i = type === 'section' ? arr.indexOf(key) : arr.findIndex((p) => p.id === key); const j = i + d;
+    if (i < 0 || j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; changed();
+  },
   expand: (el, e) => { e.stopPropagation(); S.expanded[el.dataset.k] = !S.expanded[el.dataset.k]; renderAll(); },
   device: (el) => { S.device = el.dataset.v; renderTop(); layoutFrame(); },
   undo, redo,

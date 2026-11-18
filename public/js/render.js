@@ -46,7 +46,7 @@ function nav(site) {
   const links = site.order.filter((k) => map[k] && !site.sections[k].hidden).map((k) => `<a href="#${map[k][0]}">${map[k][1]}</a>`).join('');
   const parts = String(site.hero.name || '').trim().split(/\s+/);
   const logo = parts.length > 1 ? `${esc(parts[0])}<span>.</span>${esc(parts.slice(1).join(' '))}` : esc(parts[0] || '');
-  return `<nav class="glass top"><a class="logo" href="#top"><img src="/logo.svg" alt="" width="38" height="38">${logo}</a><div class="links"><a href="#top" class="on">Home</a>${links}</div><a class="go" href="/edit" aria-label="Edit site">${icon('pencil', 16)}</a></nav>`;
+  return `<nav class="glass top"><a class="logo" href="#top"><img src="/logo.svg" alt="" width="38" height="38"><span class="lt">${logo}</span></a><div class="links"><a href="#top" class="on">Home</a>${links}</div><a class="go" href="/edit" aria-label="Edit site">${icon('pencil', 16)}</a></nav>`;
 }
 
 function hero(site) {

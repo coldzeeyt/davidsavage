@@ -141,15 +141,40 @@ select.in option{background:#12121c}
 .lcard .err{color:#ff9a9a;font-size:12px;min-height:16px}
 
 @media (max-width:1200px){.main{grid-template-columns:250px 1fr 330px}.crumb{display:none}.mid .seg button span{display:none}}
-@media (max-width:980px){
-  body{overflow:auto;height:auto}
-  .app{height:auto;grid-template-rows:auto}
-  .top{flex-wrap:wrap;padding:10px;border-radius:18px}
-  .mid{display:none}
-  .main{grid-template-columns:1fr}
-  .canvas{display:none}
-  .side,.insp{max-height:none;overflow:visible}
-  .scroll,.ibody{overflow:visible}
+/* ---------- mobile editor ---------- */
+.mnav{display:none}
+.row .mv{display:none}
+@media (max-width:900px){
+  body{height:100dvh}
+  #root{height:100dvh}
+  .app{height:100dvh;padding:10px 10px 0;grid-template-rows:auto 1fr auto;gap:10px}
+  .top{padding:8px;border-radius:18px;gap:8px}
+  .crumb,.mid{display:none}
+  .saved{margin-right:0;font-size:0;gap:0}.saved i{width:9px;height:9px}
+  .tb.vs{padding:0;width:40px;height:40px;justify-content:center}.tb.vs span{display:none}
+  .pub{padding:11px 16px}
+  .main{grid-template-columns:1fr;min-height:0}
+  .side,.canvas,.insp{display:none;min-height:0;border-radius:20px}
+  .app[data-mview=blocks] .side,.app[data-mview=edit] .insp,.app[data-mview=preview] .canvas{display:flex}
+  .canvas{padding:8px}.chrome{display:none}.frame{border-radius:14px}
+  .insp{padding:16px}
+  .ih h3{font-size:30px}
+  .in,.search input,select.in{font-size:16px}
+  .row{padding:10px 8px;font-size:14px}
+  .row .h{display:none}
+  .row .mv{display:grid;width:30px;height:30px;place-items:center;border-radius:9px;background:rgba(255,255,255,.06)}
+  .row .e{gap:4px}
+  .row .e button{width:30px;height:30px;place-items:center;border-radius:9px}
+  .item .ihd{padding:12px}
+  .ib.sm{width:36px;height:36px}
+  .seg button{padding:10px 8px}
+  .acts button{padding:11px 0;font-size:12px}
+  .tg{padding:10px 2px;font-size:14px}
+  .mnav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;margin-bottom:max(10px,env(safe-area-inset-bottom));border-radius:22px}
+  .mnav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:16px;color:var(--dim);font-size:10.5px;letter-spacing:.5px}
+  .mnav button.on{color:var(--gold);background:rgba(200,168,75,.12);box-shadow:inset 0 0 0 1px rgba(200,168,75,.35)}
+  .mnav sup{position:absolute;top:2px;right:calc(50% - 22px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#ff4d4d;color:#fff;font-size:9.5px;display:grid;place-items:center}
+  .toast{bottom:96px}
+  .login{min-height:100dvh}
 }
-
 .flip{transform:rotate(180deg)}
