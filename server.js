@@ -391,6 +391,21 @@ async function migrateNewProjects() {
   console.log('[migrate] added Ringfall, Tube Grid, Runout');
 }
 
-store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(() => {
+async function migrateBongotronics() {
+  const done = await store.get('migrations', []);
+  if (done.includes('add-bongotronics')) return;
+  const link = DEFAULTS.sections.socials.items.find((l) => l.id === 'l5');
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    const items = site?.sections?.socials?.items;
+    if (!items || items.some((l) => l.id === 'l5' || /bongotronics/i.test((l.label || '') + (l.link || '')))) continue;
+    items.push(structuredClone(link));
+    await store.set(key, site);
+  }
+  done.push('add-bongotronics'); await store.set('migrations', done);
+  console.log('[migrate] added Bongotronics');
+}
+
+store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(migrateBongotronics).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });

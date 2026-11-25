@@ -204,7 +204,7 @@ a.card:hover .go{transform:rotate(45deg)}
 .tr span{color:var(--dim);font-size:12px;display:inline-flex;align-items:center;gap:6px}
 
 /* socials */
-.socials{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+.socials{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:22px}
 .soc{padding:24px;display:flex;align-items:center;gap:16px;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 .soc:hover{transform:translateY(-3px)}
 .soc:hover .go{transform:rotate(45deg)}
