@@ -170,8 +170,8 @@ function inspector() {
       F.text('Title', b + '.title'), F.area('Description', b + '.desc'), F.text('Link', b + '.link', 'https://'),
       F.csv('Tags (comma separated)', b + '.tags', 'Live, Halfbyte'),
       F.seg('Width', b + '.width', [['s', 'S'], ['m', 'M'], ['l', 'L'], ['half', 'Half'], ['xl', 'XL'], ['full', 'Full']]),
-      F.select('Picture', b + '.thumb', THUMBS.map((t) => [t, { turntable: 'Turntable', playlists: 'Playlists', eq: 'EQ bars', tiles: 'Game tiles', dial: 'Radio dial', aperture: 'Camera', number: 'Big number', cube: 'Bouncing cube', text: 'Big text', image: 'My own image' }[t]])),
-      p.thumb === 'number' || p.thumb === 'text' ? F.text('Picture text', b + '.thumbText') : '',
+      F.select('Picture', b + '.thumb', THUMBS.map((t) => [t, { turntable: 'Turntable', playlists: 'Playlists', eq: 'EQ bars', tiles: 'Game tiles', dial: 'Radio dial', aperture: 'Camera', number: 'Big number', cube: 'Bouncing cube', rings: 'Rhythm rings', tubes: 'Video grid', pressing: 'Numbered record', text: 'Big text', image: 'My own image' }[t]])),
+      p.thumb === 'number' || p.thumb === 'text' || p.thumb === 'pressing' ? F.text('Picture text', b + '.thumbText') : '',
       p.thumb === 'image' ? F.text('Image URL', b + '.image', 'https://… .png') : '',
       F.toggle('Show on homepage', b + '.hidden', true),
       `<div class="foot"><button data-act="proj-dup">${icon('copy', 14)} Duplicate</button><button class="d" data-act="proj-del">${icon('trash-2', 14)} Delete</button></div>`

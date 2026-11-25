@@ -374,6 +374,23 @@ async function migrateDontDie() {
   done.push('add-dont-die-on-me'); await store.set('migrations', done);
 }
 
-store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(() => {
+async function migrateNewProjects() {
+  const done = await store.get('migrations', []);
+  if (done.includes('add-ringfall-tubegrid-runout')) return;
+  const add = DEFAULTS.sections.projects.items.filter((p) => ['p10', 'p11', 'p12'].includes(p.id));
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    const items = site?.sections?.projects?.items; if (!items) continue;
+    const fresh = add.filter((a) => !items.some((p) => p.id === a.id || (p.title || '').toLowerCase() === a.title.toLowerCase()));
+    if (!fresh.length) continue;
+    const at = items.findIndex((p) => p.id === 'p4');
+    items.splice(at >= 0 ? at + 1 : items.length, 0, ...structuredClone(fresh));
+    await store.set(key, site);
+  }
+  done.push('add-ringfall-tubegrid-runout'); await store.set('migrations', done);
+  console.log('[migrate] added Ringfall, Tube Grid, Runout');
+}
+
+store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });

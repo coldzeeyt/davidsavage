@@ -20,7 +20,7 @@ const grad = (name) => { let h = 0; for (const c of String(name)) h = (h * 31 + 
 let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
 
 // ---------- project thumbnails ----------
-export const THUMBS = ['turntable', 'playlists', 'eq', 'tiles', 'dial', 'aperture', 'number', 'cube', 'text', 'image'];
+export const THUMBS = ['turntable', 'playlists', 'eq', 'tiles', 'dial', 'aperture', 'number', 'cube', 'rings', 'tubes', 'pressing', 'text', 'image'];
 function thumb(p) {
   seed = 7;
   if (p.thumb === 'image' && p.image) return `<div class="thumb" style="${bgImg(p.image)}"></div>`;
@@ -32,6 +32,9 @@ function thumb(p) {
     case 'eq': return `<div class="thumb" style="background:radial-gradient(circle at 50% 120%,rgba(255,122,89,.35),transparent 60%),#0d0d17"><div class="eq">${Array.from({ length: 22 }, (_, i) => `<i style="height:${18 + Math.abs(Math.sin(i * .7 + 1)) * 70 + rnd() * 12}%;opacity:${.55 + rnd() * .45};animation-delay:-${(rnd() * 1.2).toFixed(2)}s"></i>`).join('')}</div></div>`;
     case 'tiles': return `<div class="thumb" style="background:linear-gradient(180deg,#141432,#0d0d17)"><div class="tiles">${Array.from({ length: 14 * 8 }, (_, i) => { const r = Math.floor(i / 14), c = i % 14; let s = ''; if (r >= 6) s = 'background:#3b2a6a'; if (r === 5 && (c < 3 || c > 9)) s = 'background:#5b3df0'; if (r === 3 && c > 5 && c < 9) s = 'background:#5b3df0'; if (r === 2 && c === 7) s = 'background:var(--gold);border-radius:3px'; if (r === 4 && c === 2) s = 'background:var(--cyan)'; return `<i style="${s}"></i>`; }).join('')}</div></div>`;
     case 'dial': return `<div class="thumb" style="background:radial-gradient(circle at 58% 30%,rgba(255,77,77,.2),transparent 50%),#0d0d17"><div class="dial"></div><div class="needle"></div><div class="stations"><span>Comedy</span><span>Skate</span><b>Gaming</b><span>Music</span><span>IRL</span></div></div>`;
+    case 'rings': return `<div class="thumb" style="background:radial-gradient(circle at 50% 50%,rgba(0,220,255,.18),transparent 60%),#0d0d17"><div class="rings"><i></i><i></i><i></i><b></b></div></div>`;
+    case 'pressing': return `<div class="thumb" style="background:radial-gradient(circle at 70% 50%,rgba(255,159,46,.22),transparent 55%),#0d0d17"><div class="press"><div class="lbl"><b>${esc(p.thumbText || '#048')}</b><span>of 100</span></div></div></div>`;
+    case 'tubes': return `<div class="thumb" style="background:radial-gradient(circle at 50% 120%,rgba(255,59,74,.28),transparent 60%),#0d0d17"><div class="tubes">${Array.from({ length: 24 }, (_, i) => `<i style="animation-delay:${(i * .09).toFixed(2)}s"></i>`).join('')}</div></div>`;
     case 'aperture': return `<div class="thumb"><div class="icon" style="color:var(--soft)">${icon('aperture', 64)}</div></div>`;
     case 'number': return `<div class="thumb"><div class="icon" style="font-family:var(--display);font-size:64px;color:var(--gold)">${esc(p.thumbText || '1,024')}</div></div>`;
     case 'cube': return `<div class="thumb" style="background:linear-gradient(180deg,#1c0f3a,#0d0d17)"><div class="icon"><div class="cube"></div></div></div>`;
