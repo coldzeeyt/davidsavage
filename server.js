@@ -406,6 +406,21 @@ async function migrateBongotronics() {
   console.log('[migrate] added Bongotronics');
 }
 
-store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(migrateBongotronics).then(() => {
+async function migrateRunoutLive() {
+  const done = await store.get('migrations', []);
+  if (done.includes('runout-live')) return;
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    const p = site?.sections?.projects?.items?.find((x) => x.id === 'p12');
+    if (!p || p.link) continue;
+    p.link = 'https://site-production-c239c98a.up.railway.app';
+    p.tags = (p.tags || []).map((t) => (/coming soon/i.test(t) ? 'New' : t));
+    await store.set(key, site);
+  }
+  done.push('runout-live'); await store.set('migrations', done);
+  console.log('[migrate] Runout is live');
+}
+
+store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(migrateBongotronics).then(migrateRunoutLive).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });
