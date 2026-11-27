@@ -15,9 +15,15 @@ const el = { stage: $('#stage'), idle: $('#idle'), video: $('#video'), guide: $(
 let modelReady = null;
 const loadModels = () => modelReady ||= (async () => {
   const fa = window.faceapi;
+  try { await fa.tf.setBackend('webgl'); } catch {}
   await fa.tf.ready();
+  if (fa.tf.getBackend() !== 'webgl') { try { await fa.tf.setBackend('cpu'); await fa.tf.ready(); } catch {} }
   await Promise.all([fa.nets.ssdMobilenetv1.loadFromUri('models'), fa.nets.faceLandmark68Net.loadFromUri('models')]);
+  // Run once on a blank image so the first real photo doesn't pay for shader setup.
+  try { const w = document.createElement('canvas'); w.width = w.height = 160; await fa.detectAllFaces(w, new fa.SsdMobilenetv1Options({ minConfidence: .5 })); } catch {}
 })();
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
+if (!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
 loadModels().catch(() => {});
 
 // ---------- geometry ----------
@@ -198,20 +204,38 @@ function rate(mt, v) {
   return d;
 }
 
+// 100 at the centre of the typical range, 85 at its edges, falling off outside it.
+function closeness(mt, v) {
+  const [lo, hi] = mt.band; const mid = (lo + hi) / 2, half = (hi - lo) / 2 || 1;
+  const c = mt.k === 'sym' ? Math.max(0, v - 1) / (hi - 1) : Math.abs(v - mid) / half;
+  return c <= 1 ? 100 - 15 * c : Math.max(0, 85 - (c - 1) * 35);
+}
+
 // ---------- photo + analysis ----------
 let current = null, view = 'mesh';
 
 async function analyse(img) {
   showErr('');
   el.busy.hidden = false; el.busyText.textContent = 'Mapping your face';
+  el.actions.hidden = true; el.idle.hidden = true;
+  const fail = (msg) => {
+    showErr(msg);
+    el.actions.hidden = false;
+    if (current) { el.canvas.hidden = false; draw(); } else { el.canvas.hidden = true; el.idle.hidden = false; }
+  };
   try {
-    await loadModels();
+    { // show the photo right away so nothing looks stuck
+      const c = el.canvas, cx = c.getContext('2d'), W = el.stage.clientWidth * Math.min(2, window.devicePixelRatio || 1);
+      c.width = W; c.height = W * 1.25; const s = Math.max(c.width / img.width, c.height / img.height);
+      cx.drawImage(img, (c.width - img.width * s) / 2, (c.height - img.height * s) / 2, img.width * s, img.height * s); c.hidden = false;
+    }
+    await withTimeout(loadModels(), 45000);
     const scale = Math.min(1, 1400 / Math.max(img.width, img.height));
     const cv = document.createElement('canvas'); cv.width = Math.round(img.width * scale); cv.height = Math.round(img.height * scale);
     cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
     const fa = window.faceapi;
-    const found = await fa.detectAllFaces(cv, new fa.SsdMobilenetv1Options({ minConfidence: .45 })).withFaceLandmarks();
-    if (!found.length) { el.busy.hidden = true; return showErr('No face found. Try a straight-on photo with your whole face in frame and even light.'); }
+    const found = await withTimeout(fa.detectAllFaces(cv, new fa.SsdMobilenetv1Options({ minConfidence: .4 })).withFaceLandmarks(), 40000);
+    if (!found.length) { el.busy.hidden = true; return fail('No face found. Try a straight-on photo with your whole face in frame and even light.'); }
     const best = found.sort((a, b) => b.detection.box.area - a.detection.box.area)[0];
     const m = measure(best.landmarks.positions.map((p) => ({ x: p.x, y: p.y })), cv.width);
     current = { img: cv, m, many: found.length > 1 };
@@ -220,7 +244,7 @@ async function analyse(img) {
     el.idle.hidden = true; el.canvas.hidden = false; el.views.hidden = false; el.reset.hidden = false; el.actions.hidden = true;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (e) {
-    console.error(e); showErr('Something went wrong reading that photo. Try another one.');
+    console.error(e); fail(e && e.message === 'timeout' ? 'This is taking too long on this device. Try again, or upload a smaller photo.' : 'Something went wrong reading that photo. Try another one.');
   }
   el.busy.hidden = true;
 }
@@ -253,7 +277,8 @@ $('#camBtn').addEventListener('click', async () => {
 const stopCam = () => { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; el.video.hidden = true; el.guide.hidden = true; el.camActions.hidden = true; };
 $('#camCancel').addEventListener('click', () => { stopCam(); el.actions.hidden = false; if (!current) el.idle.hidden = false; else el.canvas.hidden = false; });
 $('#snapBtn').addEventListener('click', () => {
-  const v = el.video, c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+  const v = el.video; if (!v.videoWidth) return showErr('The camera isn\'t ready yet. Give it a second and try again.');
+  const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
   const x = c.getContext('2d'); x.translate(c.width, 0); x.scale(-1, 1); x.drawImage(v, 0, 0);
   stopCam(); analyse(c);
 });
@@ -349,10 +374,16 @@ function renderResults() {
     ...todo.map((r) => ({ ...r.mt.fix(r.val, m), ic: 'sparkles' }))
   ];
 
+  const scored = rows.filter((r) => !(r.mt.k === 'sym' && m.turned));
+  const wsum = scored.reduce((a, r) => a + r.mt.w, 0);
+  const score = Math.round(scored.reduce((a, r) => a + r.mt.w * closeness(r.mt, r.val), 0) / wsum);
+  const inRange = scored.filter((r) => r.d === 0).length;
   const chip = (key, val, label) => `<button data-pk="${key}" data-pv="${val}" class="${prefs[key] === val ? 'on' : ''}">${label}</button>`;
   el.results.innerHTML = `
     <div class="shape glass">
-      <div class="k">Closest face shape</div>
+      <div class="score"><div><div class="k">Proportion score</div><div class="big">${score}<span>%</span></div><div class="k">${inRange} of ${scored.length} measurements in the typical range</div></div>
+        <div class="ring" style="--p:${score}"></div></div>
+      <div class="k" style="margin-top:22px">Closest face shape</div>
       <h2>${shape[0].toUpperCase() + shape.slice(1)}</h2>
       <p>${esc(S.line)}</p>
       ${warns.length ? `<div class="warns">${warns.map((w) => `<div class="warn">${icon('info', 18)}<span>${esc(w)}</span></div>`).join('')}</div>` : ''}

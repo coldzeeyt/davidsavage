@@ -75,6 +75,10 @@ h1{font-size:clamp(34px,4.6vw,52px);line-height:1.04;letter-spacing:-.035em;font
 /* results */
 #results{display:grid;gap:clamp(28px,4vw,44px)}
 .shape{padding:26px}
+.score{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:22px;border-bottom:1px solid var(--line)}
+.score .big{font-family:var(--mono);font-size:clamp(64px,9vw,88px);line-height:1;letter-spacing:-.04em;margin:8px 0 10px}
+.score .big span{font-size:.45em;color:var(--dim);margin-left:4px}
+.ring{width:96px;height:96px;flex:none;border-radius:50%;background:conic-gradient(var(--acc) calc(var(--p)*1%),rgba(255,255,255,.1) 0);-webkit-mask:radial-gradient(circle,transparent 58%,#000 59%);mask:radial-gradient(circle,transparent 58%,#000 59%)}
 .shape .k{font-size:14px;color:var(--dim)}
 .shape h2{font-size:clamp(36px,5vw,52px);line-height:1;letter-spacing:-.035em;font-weight:600;margin:6px 0 10px}
 .shape p{color:var(--soft);max-width:60ch}
