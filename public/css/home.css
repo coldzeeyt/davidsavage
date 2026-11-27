@@ -328,3 +328,7 @@ body.preview .rv{opacity:1;transform:none;transition:none}
 .press .lbl{width:104px;height:104px;border-radius:50%;background:#e8902a;color:#1a1206;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
 .press .lbl b{font-family:var(--display);font-size:34px}.press .lbl span{font-family:var(--mono,monospace);font-size:10px;letter-spacing:2px;text-transform:uppercase}
 .w-s .press,.w-m .press{transform:scale(.45)}
+
+.fmesh{position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);fill:none;stroke:rgba(255,255,255,.6);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.fmesh .j{stroke:#ff5b2e;stroke-width:1.8}
+.fmesh .m{stroke:#ff5b2e;stroke-width:1;stroke-dasharray:4 4;opacity:.7}

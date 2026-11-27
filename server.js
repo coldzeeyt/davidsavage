@@ -421,6 +421,22 @@ async function migrateRunoutLive() {
   console.log('[migrate] Runout is live');
 }
 
-store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(migrateBongotronics).then(migrateRunoutLive).then(() => {
+async function migrateFacet() {
+  const done = await store.get('migrations', []);
+  if (done.includes('add-facet')) return;
+  const add = DEFAULTS.sections.projects.items.find((p) => p.id === 'p13');
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    const items = site?.sections?.projects?.items; if (!items) continue;
+    if (items.some((p) => p.id === add.id || (p.title || '').toLowerCase() === 'facet')) continue;
+    const at = items.findIndex((p) => p.id === 'p12');
+    items.splice(at >= 0 ? at + 1 : items.length, 0, structuredClone(add));
+    await store.set(key, site);
+  }
+  done.push('add-facet'); await store.set('migrations', done);
+  console.log('[migrate] added Facet');
+}
+
+store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(migrateBongotronics).then(migrateRunoutLive).then(migrateFacet).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });

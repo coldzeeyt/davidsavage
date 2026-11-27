@@ -20,7 +20,7 @@ const grad = (name) => { let h = 0; for (const c of String(name)) h = (h * 31 + 
 let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
 
 // ---------- project thumbnails ----------
-export const THUMBS = ['turntable', 'playlists', 'eq', 'tiles', 'dial', 'aperture', 'number', 'cube', 'rings', 'tubes', 'pressing', 'text', 'image'];
+export const THUMBS = ['turntable', 'playlists', 'eq', 'tiles', 'dial', 'aperture', 'number', 'cube', 'rings', 'tubes', 'facemesh', 'pressing', 'text', 'image'];
 function thumb(p) {
   seed = 7;
   if (p.thumb === 'image' && p.image) return `<div class="thumb" style="${bgImg(p.image)}"></div>`;
@@ -35,6 +35,7 @@ function thumb(p) {
     case 'rings': return `<div class="thumb" style="background:radial-gradient(circle at 50% 50%,rgba(0,220,255,.18),transparent 60%),#0d0d17"><div class="rings"><i></i><i></i><i></i><b></b></div></div>`;
     case 'pressing': return `<div class="thumb" style="background:radial-gradient(circle at 70% 50%,rgba(255,159,46,.22),transparent 55%),#0d0d17"><div class="press"><div class="lbl"><b>${esc(p.thumbText || '#048')}</b><span>of 100</span></div></div></div>`;
     case 'tubes': return `<div class="thumb" style="background:radial-gradient(circle at 50% 120%,rgba(255,59,74,.28),transparent 60%),#0d0d17"><div class="tubes">${Array.from({ length: 24 }, (_, i) => `<i style="animation-delay:${(i * .09).toFixed(2)}s"></i>`).join('')}</div></div>`;
+    case 'facemesh': return `<div class="thumb" style="background:radial-gradient(circle at 50% 45%,rgba(255,91,46,.22),transparent 60%),#0d0d17"><svg class="fmesh" viewBox="0 0 200 160" aria-hidden="true"><path class="j" d="M62 40c0 44 16 78 38 92 22-14 38-48 38-92"/><path d="M70 36c7-5 17-6 24-2M106 34c7-4 17-3 24 2M74 52c5-4 13-4 18 0-5 4-13 4-18 0ZM108 52c5-4 13-4 18 0-5 4-13 4-18 0ZM100 50v28M92 82c4 3 12 3 16 0M88 100c8-4 16-4 24 0-8 6-16 6-24 0Z"/><path class="m" d="M48 44h104M48 78h104M48 132h104"/></svg></div>`;
     case 'aperture': return `<div class="thumb"><div class="icon" style="color:var(--soft)">${icon('aperture', 64)}</div></div>`;
     case 'number': return `<div class="thumb"><div class="icon" style="font-family:var(--display);font-size:64px;color:var(--gold)">${esc(p.thumbText || '1,024')}</div></div>`;
     case 'cube': return `<div class="thumb" style="background:linear-gradient(180deg,#1c0f3a,#0d0d17)"><div class="icon"><div class="cube"></div></div></div>`;

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Facet — face measurements</title>
+<meta name="description" content="Measure your facial proportions and get a plan built from the things you can actually change.">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="facet.css">
+</head>
+<body>
+<div class="ambient" aria-hidden="true"><div class="photo" id="ambPhoto"></div><i class="o1"></i><i class="o2"></i></div>
+
+<header class="top">
+  <a class="mark" href="./" aria-label="Facet home"><svg viewBox="0 0 32 32" width="26" height="26"><path d="M16 3 27 9.5v13L16 29 5 22.5v-13Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 3v26M5 9.5l22 13M27 9.5l-22 13" stroke="currentColor" stroke-width="1" opacity=".45"/></svg><span>facet</span></a>
+  <button class="ghost" id="resetBtn" hidden><span data-i="rotate-ccw"></span>New photo</button>
+</header>
+
+<main class="wrap">
+  <section class="stage-col">
+    <div class="stage glass" id="stage">
+      <div class="idle" id="idle">
+        <svg class="mesh" viewBox="0 0 200 250" aria-hidden="true">
+          <path class="jaw" d="M38 92c0 52 22 98 62 118 40-20 62-66 62-118"/>
+          <path d="M52 86c10-8 26-9 38-4M110 82c12-5 28-4 38 4"/>
+          <path d="M58 104c8-6 22-6 30 0-8 6-22 6-30 0ZM112 104c8-6 22-6 30 0-8 6-22 6-30 0Z"/>
+          <path d="M100 100v44M88 150c6 4 18 4 24 0"/>
+          <path d="M80 176c12-6 28-6 40 0-12 9-28 9-40 0Z"/>
+          <path class="scan" d="M30 60h140"/>
+        </svg>
+        <p>Front-facing photo, eye level, even light.</p>
+      </div>
+      <video id="video" playsinline muted hidden></video>
+      <div class="guide" id="guide" hidden></div>
+      <canvas id="canvas" hidden></canvas>
+      <div class="busy" id="busy" hidden><span class="spin"></span><b id="busyText">Mapping your face</b></div>
+    </div>
+
+    <div class="actions" id="actions">
+      <label class="btn primary"><span data-i="upload"></span>Upload photo<input type="file" id="file" accept="image/*" hidden></label>
+      <button class="btn" id="camBtn"><span data-i="camera"></span>Use camera</button>
+    </div>
+    <div class="actions" id="camActions" hidden>
+      <button class="btn primary" id="snapBtn"><span data-i="aperture"></span>Take photo</button>
+      <button class="btn" id="camCancel"><span data-i="x"></span>Cancel</button>
+    </div>
+    <div class="seg" id="views" role="tablist" hidden>
+      <button data-v="mesh" class="on">Points</button>
+      <button data-v="thirds">Thirds</button>
+      <button data-v="sym">Symmetry</button>
+      <button data-v="eyes">Eyes</button>
+    </div>
+    <p class="err" id="err" hidden></p>
+  </section>
+
+  <section class="info-col">
+    <div id="intro">
+      <h1>Measure your face. Fix what you can&nbsp;fix.</h1>
+      <p class="lede">Facet measures the proportions people actually notice — symmetry, thirds, eye tilt, width — then turns them into a plan built from haircut, grooming, skin and habits.</p>
+      <ul class="tips">
+        <li><span data-i="scan-face"></span><div><b>Straight on, neutral face</b>Eyes level with the lens, mouth closed, no smile.</div></li>
+        <li><span data-i="sun"></span><div><b>Light from the front</b>A window in front of you beats overhead light. No hat or glasses.</div></li>
+        <li><span data-i="ruler"></span><div><b>Phone an arm's length away or more</b>Closer than that, the lens makes your nose look wider than it is.</div></li>
+      </ul>
+      <p class="private"><span data-i="shield"></span>Your photo stays on this device.</p>
+    </div>
+    <div id="results" hidden></div>
+  </section>
+</main>
+
+<script src="icons.js"></script>
+<script src="vendor/face-api.js"></script>
+<script src="facet.js"></script>
+</body>
+</html>
