@@ -165,7 +165,7 @@ async function render() {
   await store.load();
   if (cleanup) { const c = cleanup; cleanup = null; await c(); }
   $$('#sheet-root > *').forEach((e) => e.remove());
-  document.body.classList.remove('focus', 'kb');
+  document.body.classList.remove('focus', 'kb', 'editing');
   const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   if (parts[0] === 'b' && parts[1]) {
     const b = store.get(parts[1]);
@@ -488,20 +488,20 @@ async function editorView(b, cid) {
   document.title = (c.title || `Chapter ${idx + 1}`) + ' · ' + b.title;
   const start = b.goal?.on ? await dayStart(b) : 0;
   const last = idx === b.chapters.length - 1;
-  app.innerHTML = `
+  app.innerHTML = `<div class="edwrap" data-wrap>
   <div class="bar"><a class="ib" href="#/b/${b.id}" aria-label="Back to contents">${icon('chevron-left')}</a><div class="grow tt"><b>${esc(b.title)}</b><span data-wc></span></div>
     ${b.goal?.on && b.goal.daily ? `<button class="ib" data-goal aria-label="Today's goal"><div class="ring" data-ring style="--p:0;width:28px;height:28px"></div></button>` : ''}
     <button class="ib" data-proof aria-label="Proofread">${icon('spell-check')}</button>
     <button class="ib" data-notes aria-label="Notes">${icon('notebook-pen')}</button>
     <button class="ib" data-more aria-label="More">${icon('ellipsis')}</button></div>
-  <div class="ed">
+  <div class="edscroll" data-scroll><div class="ed">
     <div class="chlabel">Chapter ${ROMAN(idx + 1)}</div>
     <textarea class="chtitle" data-title rows="1" placeholder="Untitled" maxlength="140" enterkeyhint="next">${esc(c.title)}</textarea>
     <div class="flr">⁂</div>
     <div class="page" contenteditable="true" spellcheck="true" data-ph="Begin here…" role="textbox" aria-multiline="true" aria-label="Chapter text">${c.html}</div>
     <div class="endnav"><button data-prev ${idx ? '' : 'disabled'}>${icon('chevron-left')}${idx ? 'Previous' : ''}</button>
       <button data-next>${last ? `${icon('plus')}New chapter` : `Next${icon('chevron-right')}`}</button></div>
-  </div>
+  </div></div>
   <div class="tools" data-tools>
     <button class="ib" data-cmd="undo" aria-label="Undo">${icon('undo-2')}</button>
     <button class="ib" data-cmd="redo" aria-label="Redo">${icon('redo-2')}</button><span class="sep"></span>
@@ -516,7 +516,7 @@ async function editorView(b, cid) {
     <button class="ib" data-cmd="justifyCenter" aria-label="Center">${icon('align-center')}</button>
     <button class="ib" data-cmd="break" aria-label="Scene break">${icon('separator-horizontal')}</button>
     <button class="ib" data-cmd="image" aria-label="Insert image">${icon('image')}</button>
-  </div>`;
+  </div></div>`;
   const page = $('.page'), title = $('[data-title]'), wc = $('[data-wc]'), tools = $('[data-tools]');
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
   const fit = () => { title.style.height = 'auto'; title.style.height = title.scrollHeight + 'px'; };
@@ -649,15 +649,36 @@ async function editorView(b, cid) {
   const outside = (e) => { if (bar && !e.target.closest('.imgbar') && !e.target.closest('figure')) closeBar(); };
   document.addEventListener('pointerdown', outside);
 
-  // keyboard-aware toolbar (iOS keeps fixed elements under the keyboard)
-  const vv = window.visualViewport;
+  // The editor fills exactly the visible area above the keyboard, so the toolbar
+  // sits on the keyboard and only the writing area scrolls.
+  const vv = window.visualViewport, wrap = $('[data-wrap]'), scroller = $('[data-scroll]');
+  document.body.classList.add('editing');
+  let raf = 0;
   const onVV = () => {
-    if (!vv) return;
-    const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop);
-    document.body.classList.toggle('kb', kb > 80);
-    tools.style.setProperty('--kb', kb > 80 ? `-${kb}px` : '0px');
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const h = vv ? vv.height : innerHeight, top = vv ? vv.offsetTop : 0;
+      wrap.style.height = h + 'px'; wrap.style.transform = `translateY(${top}px)`;
+      document.body.classList.toggle('kb', innerHeight - h > 120);
+      if (document.activeElement === page || document.activeElement === title) keepCaret();
+    });
   };
-  vv?.addEventListener('resize', onVV); vv?.addEventListener('scroll', onVV); onVV();
+  // keep the caret in view above the toolbar
+  function keepCaret() {
+    const sel = getSelection(); if (!sel.rangeCount || !scroller.contains(sel.anchorNode)) return;
+    let rect = sel.getRangeAt(0).getBoundingClientRect();
+    if (!rect.height) { const el = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement; rect = el.getBoundingClientRect(); }
+    if (!rect.height) return;
+    const box = scroller.getBoundingClientRect(), pad = 28;
+    if (rect.bottom > box.bottom - pad) scroller.scrollTop += rect.bottom - box.bottom + pad + 12;
+    else if (rect.top < box.top + pad) scroller.scrollTop -= box.top + pad - rect.top;
+  }
+  vv?.addEventListener('resize', onVV); vv?.addEventListener('scroll', onVV); addEventListener('resize', onVV); onVV();
+  // iOS sometimes pans the whole page when the keyboard opens; pull it back
+  const unpan = () => { if (scrollY) scrollTo(0, 0); };
+  addEventListener('scroll', unpan);
+  page.addEventListener('input', () => requestAnimationFrame(keepCaret));
+  page.addEventListener('keyup', (e) => { if (e.key === 'Enter' || e.key.startsWith('Arrow')) keepCaret(); });
 
   // nav + menus
   $('[data-prev]').onclick = () => idx && go(`/b/${b.id}/c/${b.chapters[idx - 1].id}`);
@@ -691,7 +712,8 @@ async function editorView(b, cid) {
   document.addEventListener('visibilitychange', onHide);
   cleanup = async () => {
     document.removeEventListener('selectionchange', onSel); document.removeEventListener('pointerdown', outside); document.removeEventListener('visibilitychange', onHide);
-    vv?.removeEventListener('resize', onVV); vv?.removeEventListener('scroll', onVV);
+    vv?.removeEventListener('resize', onVV); vv?.removeEventListener('scroll', onVV); removeEventListener('resize', onVV); removeEventListener('scroll', unpan);
+    document.body.classList.remove('editing');
     $('.focusx')?.remove();
     await save();
     if (!firstEdit) snapshot(c.html);
@@ -773,7 +795,7 @@ async function proofSheet(b, page, changed) {
         const word = map.text.substr(m.offset, m.length);
         const r = rangeAt(map, m.offset, m.length);
         if (r && hl) hl.add(r);
-        if (r) { const rect = r.getBoundingClientRect(); scrollTo({ top: scrollY + rect.top - innerHeight * .28, behavior: 'smooth' }); }
+        if (r) { const sc = $('[data-scroll]'), rect = r.getBoundingClientRect(); if (sc) sc.scrollBy({ top: rect.top - sc.getBoundingClientRect().top - sc.clientHeight * .22, behavior: 'smooth' }); else scrollTo({ top: scrollY + rect.top - innerHeight * .28, behavior: 'smooth' }); }
         const ctxS = Math.max(0, m.offset - 60), ctxE = Math.min(map.text.length, m.offset + m.length + 60);
         const ctx = (ctxS ? '…' : '') + esc(map.text.slice(ctxS, m.offset).replace(/\n+/g, ' ')) + `<mark class="${m.type === 'misspelling' ? 'sp' : ''}">${esc(word) || '&nbsp;'}</mark>` + esc(map.text.slice(m.offset + m.length, ctxE).replace(/\n+/g, ' ')) + (ctxE < map.text.length ? '…' : '');
         box.innerHTML = `<div class="pfhead"><span>${KIND[m.type] || 'Suggestion'}</span><span>${i + 1} of ${matches.length}</span></div>
