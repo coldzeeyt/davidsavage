@@ -262,7 +262,24 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 [data-theme=dark] .err{color:#e07b62}
 .hint{color:var(--ink3);font-style:italic;font-size:16px;margin-bottom:16px;line-height:1.45}
 
-#toast{position:fixed;left:50%;bottom:calc(var(--bot) + 90px);transform:translate(-50%,20px);opacity:0;z-index:90;background:var(--ink);color:var(--page);
+::highlight(proof){background-color:rgba(215,120,60,.32);text-decoration:underline wavy #b4532a;text-underline-offset:4px}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--rule);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pfhead{display:flex;justify-content:space-between;font-variant:small-caps;letter-spacing:1.6px;color:var(--ink3);font-size:15px;margin-bottom:8px}
+.pfhead span:first-child{color:var(--accent)}
+.pfmsg{font-size:19px;line-height:1.35;margin-bottom:12px}
+.pfctx{font-family:var(--text);font-size:16px;line-height:1.6;color:var(--ink2);padding:12px 14px;border-radius:12px;background:var(--page);border:1px solid var(--rule2);margin-bottom:16px}
+.pfctx mark{background:rgba(215,120,60,.25);color:var(--ink);border-radius:3px;padding:0 2px;text-decoration:underline wavy #b4532a;text-underline-offset:3px}
+.pffix{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pffix .btn{height:42px;padding:0 18px;font-size:17px;flex:0 1 auto}
+.pfacts{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--rule2);padding-top:6px}
+.pfacts button{display:flex;align-items:center;gap:6px;height:44px;padding:0 8px;color:var(--ink2);font-size:17px}
+.pfacts button:disabled{opacity:.3}
+.pfdone{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:16px 0 22px}
+.pfdone svg{width:34px;height:34px;color:var(--accent)}
+.pfdone b{font-weight:500;font-size:22px}
+.pfdone span{color:var(--ink2);font-style:italic}
+#toast{position:fixed;left:50%;top:calc(var(--top) + 62px);transform:translate(-50%,-14px);opacity:0;z-index:90;background:var(--ink);color:var(--page);
   padding:11px 20px;border-radius:999px;font-size:17px;pointer-events:none;transition:opacity .2s,transform .2s;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
 #toast.in{opacity:1;transform:translate(-50%,0)}
 

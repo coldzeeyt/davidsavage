@@ -491,6 +491,7 @@ async function editorView(b, cid) {
   app.innerHTML = `
   <div class="bar"><a class="ib" href="#/b/${b.id}" aria-label="Back to contents">${icon('chevron-left')}</a><div class="grow tt"><b>${esc(b.title)}</b><span data-wc></span></div>
     ${b.goal?.on && b.goal.daily ? `<button class="ib" data-goal aria-label="Today's goal"><div class="ring" data-ring style="--p:0;width:28px;height:28px"></div></button>` : ''}
+    <button class="ib" data-proof aria-label="Proofread">${icon('spell-check')}</button>
     <button class="ib" data-notes aria-label="Notes">${icon('notebook-pen')}</button>
     <button class="ib" data-more aria-label="More">${icon('ellipsis')}</button></div>
   <div class="ed">
@@ -665,6 +666,7 @@ async function editorView(b, cid) {
     await save(); const n = newChapter(); b.chapters.push(n); await commit(b); go(`/b/${b.id}/c/${n.id}`);
   };
   $('[data-notes]').onclick = () => { save(); notesSheet(b, c); };
+  $('[data-proof]').onclick = () => { closeBar(); proofSheet(b, page, changed); };
   const gb = $('[data-goal]'); if (gb) gb.onclick = () => toast(`${fmt(Math.max(0, totalWords(b) - start))} of ${fmt(b.goal.daily)} words today`);
   const focusOn = () => {
     document.body.classList.add('focus');
@@ -673,6 +675,7 @@ async function editorView(b, cid) {
     page.focus();
   };
   $('[data-more]').onclick = () => { save(); menu(c.title || `Chapter ${idx + 1}`, [
+    { icon: 'spell-check', label: 'Proofread chapter', run: () => proofSheet(b, page, changed) },
     { icon: 'maximize-2', label: 'Focus mode', run: focusOn },
     { icon: 'history', label: 'Earlier versions', run: () => versionsSheet(b, c, (html) => { page.innerHTML = html; dirty = true; save(); updateCount(); }) },
     { icon: 'a-large-small', label: 'Text & appearance', run: () => sheet({ title: 'Text & appearance', body: lookBody(), onMount: wireLook }) },
@@ -698,6 +701,111 @@ async function editorView(b, cid) {
   if (pendingFind) { const t = pendingFind; pendingFind = ''; setTimeout(() => highlight(page, t), 80); }
   else if (!c.html && !c.title) setTimeout(() => title.focus(), 60);
 }
+// ---------- proofreading ----------
+const BLOCK_SEL = 'p,h2,h3,li,blockquote,figure';
+function textMap(page) {
+  let text = '', prevBlock = null; const segs = [];
+  const tw = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = tw.nextNode())) {
+    if (n.parentElement.closest('.imgbar')) continue;
+    const blk = n.parentElement.closest(BLOCK_SEL) || page;
+    if (prevBlock && blk !== prevBlock) text += '\n\n';
+    prevBlock = blk;
+    segs.push({ node: n, start: text.length }); text += n.data;
+  }
+  return { text, segs };
+}
+function rangeAt(map, offset, length) {
+  const segs = map.segs; if (!segs.length) return null;
+  const startAt = (pos) => { for (const s of segs) if (pos >= s.start && pos < s.start + s.node.length) return [s.node, pos - s.start]; for (let k = segs.length - 1; k >= 0; k--) if (pos === segs[k].start + segs[k].node.length) return [segs[k].node, segs[k].node.length]; return null; };
+  const endAt = (pos) => { for (const s of segs) if (pos > s.start && pos <= s.start + s.node.length) return [s.node, pos - s.start]; return startAt(pos); };
+  const a = startAt(offset), z = length ? endAt(offset + length) : a;
+  if (!a || !z) return null;
+  const r = document.createRange(); r.setStart(a[0], a[1]); r.setEnd(z[0], z[1]); return r;
+}
+const KIND = { misspelling: 'Spelling', grammar: 'Grammar', typographical: 'Punctuation', whitespace: 'Spacing', style: 'Style', duplication: 'Repeated word', uncategorized: 'Suggestion', locale_violation: 'Spelling' };
+
+async function proofSheet(b, page, changed) {
+  // clear any formatting placeholders so offsets line up
+  const tw = document.createTreeWalker(page, NodeFilter.SHOW_TEXT); let n; const zs = [];
+  while ((n = tw.nextNode())) if (n.data.includes('​')) zs.push(n);
+  zs.forEach((t) => { t.data = t.data.replace(/​/g, ''); });
+  let map = textMap(page);
+  if (!map.text.trim()) return toast('Write something first');
+  const hl = window.CSS?.highlights ? new Highlight() : null;
+  if (hl) CSS.highlights.set('proof', hl);
+  let matches = [], i = 0, closeIt, fixed = 0, seen = 0;
+  const dict = new Set((b.dictionary || []).map((w) => w.toLowerCase()));
+  closeIt = sheet({
+    title: 'Proofread',
+    body: `<div data-pf><p class="hint" style="display:flex;align-items:center;gap:10px"><span class="spin"></span>Reading your chapter…</p></div>`,
+    onClose: () => { if (hl) CSS.highlights.delete('proof'); },
+    async onMount(sb) {
+      const box = $('[data-pf]', sb);
+      try {
+        // split long chapters into pieces the checker accepts
+        const chunks = []; let start = 0;
+        while (start < map.text.length) {
+          let end = Math.min(map.text.length, start + 18000);
+          if (end < map.text.length) { const k = map.text.lastIndexOf('\n\n', end); if (k > start) end = k; }
+          chunks.push([start, map.text.slice(start, end)]); start = end;
+        }
+        for (const [off, t] of chunks) {
+          const r = await fetch('/api/nf/proofread', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, language: 'en-US' }) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(j.error || 'The proofreader didn’t answer. Try again soon.');
+          matches.push(...j.matches.map((m) => ({ ...m, offset: m.offset + off })));
+        }
+      } catch (e) {
+        box.innerHTML = `<p class="hint">${navigator.onLine ? esc(e.message) : 'Proofreading needs an internet connection.'}</p>`; return;
+      }
+      matches = matches.filter((m) => !(m.type === 'misspelling' && dict.has(map.text.substr(m.offset, m.length).toLowerCase())));
+      seen = matches.length;
+      const shift = (from, delta) => matches.forEach((m) => { if (m.offset > from) m.offset += delta; });
+      const show = () => {
+        if (hl) hl.clear();
+        if (i >= matches.length) {
+          box.innerHTML = `<div class="pfdone">${icon('check-check')}<b>${seen ? 'All done' : 'No issues found'}</b><span>${seen ? (fixed ? `Fixed ${plural(fixed, 'issue')}.` : 'You went through every suggestion.') : 'This chapter reads clean.'}</span></div><button class="btn wide" data-close>Back to writing</button>`;
+          $('[data-close]', box).onclick = () => closeIt(); return;
+        }
+        const m = matches[i]; map = textMap(page);
+        const word = map.text.substr(m.offset, m.length);
+        const r = rangeAt(map, m.offset, m.length);
+        if (r && hl) hl.add(r);
+        if (r) { const rect = r.getBoundingClientRect(); scrollTo({ top: scrollY + rect.top - innerHeight * .28, behavior: 'smooth' }); }
+        const ctxS = Math.max(0, m.offset - 60), ctxE = Math.min(map.text.length, m.offset + m.length + 60);
+        const ctx = (ctxS ? '…' : '') + esc(map.text.slice(ctxS, m.offset).replace(/\n+/g, ' ')) + `<mark class="${m.type === 'misspelling' ? 'sp' : ''}">${esc(word) || '&nbsp;'}</mark>` + esc(map.text.slice(m.offset + m.length, ctxE).replace(/\n+/g, ' ')) + (ctxE < map.text.length ? '…' : '');
+        box.innerHTML = `<div class="pfhead"><span>${KIND[m.type] || 'Suggestion'}</span><span>${i + 1} of ${matches.length}</span></div>
+          <p class="pfmsg">${esc(m.message)}</p>
+          <p class="pfctx">${ctx}</p>
+          ${m.replacements.length ? `<div class="pffix">${m.replacements.slice(0, 4).map((x, k) => `<button class="btn${k ? ' soft' : ''}" data-r="${k}">${esc(x) || '<i>remove</i>'}</button>`).join('')}</div>` : ''}
+          <div class="pfacts"><button data-prev ${i ? '' : 'disabled'} aria-label="Previous">${icon('chevron-left')}</button>
+            ${m.type === 'misspelling' && word ? `<button data-dict>${icon('book-a')}Add to dictionary</button>` : '<span></span>'}
+            <button data-skip>Skip${icon('chevron-right')}</button></div>`;
+        $$('[data-r]', box).forEach((bt) => bt.onclick = () => {
+          const rep = m.replacements[+bt.dataset.r]; map = textMap(page);
+          const rr = rangeAt(map, m.offset, m.length); if (!rr) { i++; return show(); }
+          rr.deleteContents(); if (rep) rr.insertNode(document.createTextNode(rep));
+          page.normalize();
+          shift(m.offset, rep.length - m.length);
+          matches.splice(i, 1); fixed++; changed(); show();
+        });
+        $('[data-skip]', box).onclick = () => { i++; show(); };
+        const pv = $('[data-prev]', box); if (pv) pv.onclick = () => { if (i) { i--; show(); } };
+        const dv = $('[data-dict]', box);
+        if (dv) dv.onclick = async () => {
+          const w = word.toLowerCase(); dict.add(w); (b.dictionary ||= []).includes(word) || b.dictionary.push(word);
+          await commit(b, { meta: true });
+          matches = matches.filter((x, k) => k < i || !(x.type === 'misspelling' && map.text.substr(x.offset, x.length).toLowerCase() === w));
+          toast(`"${word}" added to this book's dictionary`); show();
+        };
+      };
+      show();
+    }
+  });
+}
+
 function placeCaret(el, atStart) { const r = document.createRange(); r.selectNodeContents(el); r.collapse(atStart); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
 
 function versionsSheet(b, c, restore) {
