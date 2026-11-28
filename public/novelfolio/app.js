@@ -516,6 +516,7 @@ async function editorView(b, cid) {
     <button class="ib" data-cmd="justifyCenter" aria-label="Center">${icon('align-center')}</button>
     <button class="ib" data-cmd="break" aria-label="Scene break">${icon('separator-horizontal')}</button>
     <button class="ib" data-cmd="image" aria-label="Insert image">${icon('image')}</button>
+    <button class="ib kbdone" data-cmd="done" aria-label="Hide keyboard">${icon('keyboard-off')}</button>
   </div></div>`;
   const page = $('.page'), title = $('[data-title]'), wc = $('[data-wc]'), tools = $('[data-tools]');
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
@@ -580,8 +581,17 @@ async function editorView(b, cid) {
   }
   function restore() { page.focus({ preventScroll: true }); if (savedRange) { const s = getSelection(); s.removeAllRanges(); s.addRange(savedRange); } }
   // keep the text selection when tapping the toolbar (iOS drops it on touchstart)
-  ['pointerdown', 'mousedown', 'touchstart'].forEach((ev) => tools.addEventListener(ev, (e) => { if (e.target.closest('[data-cmd]')) e.preventDefault(); }, { passive: false }));
-  tools.addEventListener('touchend', (e) => { const bt = e.target.closest('[data-cmd]'); if (!bt) return; e.preventDefault(); bt.click(); }, { passive: false });
+  // swipe the toolbar to scroll it; a tap (finger barely moved) presses the button
+  ['pointerdown', 'mousedown'].forEach((ev) => tools.addEventListener(ev, (e) => { if (e.pointerType !== 'touch' && e.target.closest('[data-cmd]')) e.preventDefault(); }));
+  let tx = null, tsx = 0;
+  tools.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; tsx = tools.scrollLeft; }, { passive: true });
+  tools.addEventListener('touchend', (e) => {
+    const bt = e.target.closest('[data-cmd]'); const moved = tx == null ? 99 : Math.abs(e.changedTouches[0].clientX - tx) + Math.abs(tools.scrollLeft - tsx);
+    tx = null;
+    if (!bt) return;
+    e.preventDefault(); // stops iOS from moving focus off the text
+    if (moved < 10) bt.click();
+  }, { passive: false });
   const INLINE = { bold: 'B,STRONG', italic: 'I,EM', underline: 'U', strikeThrough: 'S,STRIKE,DEL' };
   function toggleInline(k) {
     const sel = getSelection();
@@ -608,6 +618,7 @@ async function editorView(b, cid) {
   tools.addEventListener('click', async (e) => {
     const bt = e.target.closest('[data-cmd]'); if (!bt) return;
     const k = bt.dataset.cmd;
+    if (k === 'done') { document.activeElement?.blur(); return; }
     if (k === 'image') { keepRange(); const f = await pickImage(); if (!f) return; try { insertImage(await compress(f)); } catch { toast("That image couldn't be opened"); } return; }
     restore();
     if (k === 'h2') { const on = !!blockOf()?.closest('h2'); document.execCommand('formatBlock', false, on ? 'p' : 'h2'); }
@@ -678,6 +689,14 @@ async function editorView(b, cid) {
   const unpan = () => { if (scrollY) scrollTo(0, 0); };
   addEventListener('scroll', unpan);
   page.addEventListener('input', () => requestAnimationFrame(keepCaret));
+  // dragging the page while typing puts the keyboard away so you can scroll freely
+  let ty = null;
+  scroller.addEventListener('touchstart', (e) => { ty = e.touches[0].clientY; }, { passive: true });
+  scroller.addEventListener('touchmove', (e) => {
+    if (ty == null || !document.body.classList.contains('kb')) return;
+    if (Math.abs(e.touches[0].clientY - ty) > 22) { ty = null; const a = document.activeElement; if (a === page || a === title) a.blur(); }
+  }, { passive: true });
+  scroller.addEventListener('touchend', () => { ty = null; }, { passive: true });
   page.addEventListener('keyup', (e) => { if (e.key === 'Enter' || e.key.startsWith('Arrow')) keepCaret(); });
 
   // nav + menus

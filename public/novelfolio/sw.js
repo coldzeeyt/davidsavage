@@ -1,4 +1,4 @@
-const CACHE = 'novelfolio-v4';
+const CACHE = 'novelfolio-v6';
 const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'db.js', 'sync.js', 'export.js', 'icons.js', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png',
   'fonts/eb-garamond-latin-400-normal.woff2', 'fonts/eb-garamond-latin-500-normal.woff2', 'fonts/eb-garamond-latin-600-normal.woff2', 'fonts/eb-garamond-latin-400-italic.woff2', 'fonts/eb-garamond-latin-500-italic.woff2',
   'fonts/literata-latin-400-normal.woff2', 'fonts/literata-latin-600-normal.woff2', 'fonts/literata-latin-400-italic.woff2', 'fonts/literata-latin-600-italic.woff2'];
