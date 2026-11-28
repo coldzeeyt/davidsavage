@@ -470,6 +470,10 @@ const cleanHtml = (page) => {
   const c = page.cloneNode(true);
   wrapLoose(c);
   c.querySelectorAll('mark').forEach((m) => m.replaceWith(...m.childNodes));
+  const tw = document.createTreeWalker(c, NodeFilter.SHOW_TEXT); let tn; const zs = [];
+  while ((tn = tw.nextNode())) if (tn.data.includes('\u200B')) zs.push(tn);
+  zs.forEach((t) => { t.data = t.data.replace(/\u200B/g, ''); });
+  c.querySelectorAll('b,strong,i,em,u,s').forEach((x) => { if (!x.textContent && !x.querySelector('img,br')) x.remove(); });
   c.querySelectorAll('figure.sel').forEach((f) => f.classList.remove('sel'));
   c.querySelectorAll('[class=""]').forEach((x) => x.removeAttribute('class'));
   const h = c.innerHTML.trim();
@@ -556,7 +560,7 @@ async function editorView(b, cid) {
 
   // toolbar
   let savedRange = null;
-  const keepRange = () => { const s = getSelection(); if (s.rangeCount && page.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange(); };
+  const keepRange = () => { const s = getSelection(); if (document.activeElement === page && s.rangeCount && page.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange(); };
   document.addEventListener('selectionchange', onSel);
   function onSel() { keepRange(); refreshState(); }
   const blockOf = () => { const s = getSelection(); let n = s.anchorNode; while (n && n !== page) { if (n.nodeType === 1 && /^(P|H2|H3|BLOCKQUOTE|LI|FIGURE)$/.test(n.tagName)) return n; n = n.parentNode; } return null; };
@@ -574,7 +578,32 @@ async function editorView(b, cid) {
     });
   }
   function restore() { page.focus({ preventScroll: true }); if (savedRange) { const s = getSelection(); s.removeAllRanges(); s.addRange(savedRange); } }
-  tools.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-cmd]')) e.preventDefault(); });
+  // keep the text selection when tapping the toolbar (iOS drops it on touchstart)
+  ['pointerdown', 'mousedown', 'touchstart'].forEach((ev) => tools.addEventListener(ev, (e) => { if (e.target.closest('[data-cmd]')) e.preventDefault(); }, { passive: false }));
+  tools.addEventListener('touchend', (e) => { const bt = e.target.closest('[data-cmd]'); if (!bt) return; e.preventDefault(); bt.click(); }, { passive: false });
+  const INLINE = { bold: 'B,STRONG', italic: 'I,EM', underline: 'U', strikeThrough: 'S,STRIKE,DEL' };
+  function toggleInline(k) {
+    const sel = getSelection();
+    if (!sel.rangeCount) return;
+    if (!sel.isCollapsed) { document.execCommand(k); return; }
+    const tags = INLINE[k].split(',');
+    let n = sel.anchorNode;
+    while (n && n !== page) { if (n.nodeType === 1 && tags.includes(n.tagName)) break; n = n.parentNode; }
+    const put = (node, off) => { const r = document.createRange(); r.setStart(node, off); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); };
+    if (n && n !== page) {
+      // at the end of a formatted run: step out so the next words are plain
+      const r = document.createRange(); r.selectNodeContents(n); r.setStart(sel.anchorNode, sel.anchorOffset);
+      if (!r.toString().replace(/\u200B/g, '')) { const z = document.createTextNode('\u200B'); n.after(z); put(z, 1); return; }
+      // inside the run: remove the formatting from the whole run
+      const anchor = sel.anchorNode, off = sel.anchorOffset;
+      n.replaceWith(...n.childNodes);
+      try { put(anchor, off); } catch {}
+      return;
+    }
+    // nothing selected: start formatting at the caret
+    const el = document.createElement(tags[0].toLowerCase()); const z = document.createTextNode('\u200B'); el.append(z);
+    sel.getRangeAt(0).insertNode(el); put(z, 1);
+  }
   tools.addEventListener('click', async (e) => {
     const bt = e.target.closest('[data-cmd]'); if (!bt) return;
     const k = bt.dataset.cmd;
@@ -584,6 +613,7 @@ async function editorView(b, cid) {
     else if (k === 'blockquote') { const on = !!blockOf()?.closest('blockquote'); document.execCommand('formatBlock', false, on ? 'p' : 'blockquote'); }
     else if (k === 'justifyCenter') { document.execCommand(document.queryCommandState('justifyCenter') ? 'justifyLeft' : 'justifyCenter'); }
     else if (k === 'break') document.execCommand('insertHTML', false, '<hr><p><br></p>');
+    else if (INLINE[k]) toggleInline(k);
     else document.execCommand(k);
     changed(); refreshState();
   });
