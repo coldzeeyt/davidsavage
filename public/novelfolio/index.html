@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<title>Novelfolio</title>
+<meta name="description" content="Write your book, chapter by chapter.">
+<meta name="theme-color" content="#ece2cc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16110d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Novelfolio">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preload" href="fonts/eb-garamond-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/literata-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="app.css">
+<script>try{var t=localStorage.getItem('nf_theme')||'auto';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';var f=localStorage.getItem('nf_size');if(f)document.documentElement.style.setProperty('--fs',f+'px')}catch(e){}</script>
+</head>
+<body>
+<div class="paper" aria-hidden="true"></div>
+<main id="app"></main>
+<div id="sheet-root"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="print" aria-hidden="true"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -20,7 +20,7 @@ const grad = (name) => { let h = 0; for (const c of String(name)) h = (h * 31 + 
 let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
 
 // ---------- project thumbnails ----------
-export const THUMBS = ['turntable', 'playlists', 'eq', 'tiles', 'dial', 'aperture', 'number', 'cube', 'rings', 'tubes', 'facemesh', 'pressing', 'text', 'image'];
+export const THUMBS = ['turntable', 'playlists', 'eq', 'tiles', 'dial', 'aperture', 'number', 'cube', 'rings', 'tubes', 'facemesh', 'books', 'pressing', 'text', 'image'];
 function thumb(p) {
   seed = 7;
   if (p.thumb === 'image' && p.image) return `<div class="thumb" style="${bgImg(p.image)}"></div>`;
@@ -36,6 +36,7 @@ function thumb(p) {
     case 'pressing': return `<div class="thumb" style="background:radial-gradient(circle at 70% 50%,rgba(255,159,46,.22),transparent 55%),#0d0d17"><div class="press"><div class="lbl"><b>${esc(p.thumbText || '#048')}</b><span>of 100</span></div></div></div>`;
     case 'tubes': return `<div class="thumb" style="background:radial-gradient(circle at 50% 120%,rgba(255,59,74,.28),transparent 60%),#0d0d17"><div class="tubes">${Array.from({ length: 24 }, (_, i) => `<i style="animation-delay:${(i * .09).toFixed(2)}s"></i>`).join('')}</div></div>`;
     case 'facemesh': return `<div class="thumb" style="background:radial-gradient(circle at 50% 45%,rgba(255,91,46,.22),transparent 60%),#0d0d17"><svg class="fmesh" viewBox="0 0 200 160" aria-hidden="true"><path class="j" d="M62 40c0 44 16 78 38 92 22-14 38-48 38-92"/><path d="M70 36c7-5 17-6 24-2M106 34c7-4 17-3 24 2M74 52c5-4 13-4 18 0-5 4-13 4-18 0ZM108 52c5-4 13-4 18 0-5 4-13 4-18 0ZM100 50v28M92 82c4 3 12 3 16 0M88 100c8-4 16-4 24 0-8 6-16 6-24 0Z"/><path class="m" d="M48 44h104M48 78h104M48 132h104"/></svg></div>`;
+    case 'books': { const sp = [['#6b2a23', 78, 'Ember'], ['#2f4a3a', 64, ''], ['#25324b', 86, 'Salt'], ['#94672c', 70, ''], ['#4e2f45', 82, 'Novelfolio'], ['#454b4e', 60, '']]; return `<div class="thumb" style="background:radial-gradient(circle at 50% 110%,rgba(220,170,100,.28),transparent 62%),#0d0d17"><div class="shelfx">${sp.map(([c, h, t], i) => `<i style="background:${c};height:${h}%${i === 5 ? ';transform:rotate(9deg);transform-origin:bottom left' : ''}"><b>${esc(t)}</b></i>`).join('')}</div></div>`; }
     case 'aperture': return `<div class="thumb"><div class="icon" style="color:var(--soft)">${icon('aperture', 64)}</div></div>`;
     case 'number': return `<div class="thumb"><div class="icon" style="font-family:var(--display);font-size:64px;color:var(--gold)">${esc(p.thumbText || '1,024')}</div></div>`;
     case 'cube': return `<div class="thumb" style="background:linear-gradient(180deg,#1c0f3a,#0d0d17)"><div class="icon"><div class="cube"></div></div></div>`;

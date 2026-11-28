@@ -329,6 +329,12 @@ body.preview .rv{opacity:1;transform:none;transition:none}
 .press .lbl b{font-family:var(--display);font-size:34px}.press .lbl span{font-family:var(--mono,monospace);font-size:10px;letter-spacing:2px;text-transform:uppercase}
 .w-s .press,.w-m .press{transform:scale(.45)}
 
+.shelfx{position:absolute;left:0;right:0;bottom:18px;height:74%;display:flex;align-items:flex-end;justify-content:center;gap:5px;border-bottom:2px solid rgba(220,170,100,.35)}
+.shelfx i{width:34px;border-radius:3px 3px 1px 1px;position:relative;box-shadow:inset 3px 0 6px rgba(0,0,0,.35),inset -2px 0 3px rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.shelfx i::before,.shelfx i::after{content:"";position:absolute;left:4px;right:4px;height:2px;background:#d9bf86;opacity:.7;top:12px}
+.shelfx i::after{top:auto;bottom:12px}
+.shelfx b{writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--serif);font-style:italic;font-weight:400;font-size:13px;color:#e3cb93;white-space:nowrap}
+.w-s .shelfx i{width:22px}.w-s .shelfx b{font-size:10px}
 .fmesh{position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);fill:none;stroke:rgba(255,255,255,.6);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
 .fmesh .j{stroke:#ff5b2e;stroke-width:1.8}
 .fmesh .m{stroke:#ff5b2e;stroke-width:1;stroke-dasharray:4 4;opacity:.7}

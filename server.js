@@ -15,6 +15,7 @@ if (!ADMIN_PASSWORD) console.warn('[warn] ADMIN_PASSWORD is not set — the edit
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+app.use('/api/nf', require('./lib/novelfolio')(store, SECRET));
 app.use(express.json({ limit: '2mb' }));
 
 // ---------- helpers ----------
@@ -290,6 +291,8 @@ app.get(['/', '/index.html'], (req, res) => {
   const origin = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   res.type('html').set('Cache-Control', 'no-cache').send(indexHtml.replace(/__ORIGIN__/g, origin));
 });
+app.get(/^\/novelfolio$/, (req, res) => res.redirect(301, '/novelfolio/'));
+app.get('/novelfolio/sw.js', (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'public', 'novelfolio', 'sw.js')));
 app.get(['/edit', '/edit/'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'edit', 'index.html')));
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: '1h' }));
 app.use((req, res) => res.redirect('/'));
@@ -437,6 +440,22 @@ async function migrateFacet() {
   console.log('[migrate] added Facet');
 }
 
-store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(migrateBongotronics).then(migrateRunoutLive).then(migrateFacet).then(() => {
+async function migrateNovelfolio() {
+  const done = await store.get('migrations', []);
+  if (done.includes('add-novelfolio')) return;
+  const add = DEFAULTS.sections.projects.items.find((p) => p.id === 'p14');
+  for (const key of ['site:live', 'site:draft']) {
+    const site = await store.get(key);
+    const items = site?.sections?.projects?.items; if (!items) continue;
+    if (items.some((p) => p.id === add.id || (p.title || '').toLowerCase() === 'novelfolio')) continue;
+    const at = items.findIndex((p) => p.id === 'p13');
+    items.splice(at >= 0 ? at + 1 : items.length, 0, structuredClone(add));
+    await store.set(key, site);
+  }
+  done.push('add-novelfolio'); await store.set('migrations', done);
+  console.log('[migrate] added Novelfolio');
+}
+
+store.init().then(migrate).then(migrateLabel).then(migrateCrossjam).then(migrateMatchbook).then(migrateDontDie).then(migrateNewProjects).then(migrateBongotronics).then(migrateRunoutLive).then(migrateFacet).then(migrateNovelfolio).then(() => {
   app.listen(PORT, () => console.log(`davidsavage.xyz on :${PORT} (store: ${store.kind()})`));
 }).catch((e) => { console.error('Store failed to start', e); process.exit(1); });
