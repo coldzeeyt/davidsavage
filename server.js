@@ -294,6 +294,7 @@ app.get(['/', '/index.html'], (req, res) => {
 app.get(/^\/novelfolio$/, (req, res) => res.redirect(301, '/novelfolio/'));
 app.get('/novelfolio/sw.js', (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'public', 'novelfolio', 'sw.js')));
 app.get(['/edit', '/edit/'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'edit', 'index.html')));
+app.use('/novelfolio', express.static(path.join(__dirname, 'public', 'novelfolio'), { setHeaders: (res, file) => res.set('Cache-Control', /\.woff2$/.test(file) ? 'public, max-age=31536000, immutable' : 'no-cache') }));
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: '1h' }));
 app.use((req, res) => res.redirect('/'));
 
